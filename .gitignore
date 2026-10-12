@@ -1,0 +1,3 @@
+# Local SMTP credentials
+admin-portal/includes/mailer.local.php
+vendor/

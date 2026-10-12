@@ -1,0 +1,39 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1b2a41"/>
+      <stop offset="100%" stop-color="#101a2b"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="0" y="0" width="512" height="512" rx="108" fill="url(#bg)"/>
+
+  <!-- academic crest / shield, marigold piping -->
+  <path d="M136 108
+           C136 108 198 82 256 82
+           C314 82 376 108 376 108
+           L376 258
+           C376 350 256 416 256 416
+           C256 416 136 350 136 258
+           Z"
+        fill="none" stroke="#e0942c" stroke-width="10"/>
+  <path d="M152 118
+           C152 118 204 96 256 96
+           C308 96 360 118 360 118
+           L360 256
+           C360 338 256 398 256 398
+           C256 398 152 338 152 256
+           Z"
+        fill="#faf8f4"/>
+
+  <!-- open book, representing the campus / knowledge -->
+  <g>
+    <path d="M256 190 L164 206 V308 L256 294 Z" fill="#1b2a41"/>
+    <path d="M256 190 L348 206 V308 L256 294 Z" fill="#24395a"/>
+    <line x1="256" y1="190" x2="256" y2="294" stroke="#101a2b" stroke-width="3"/>
+  </g>
+
+  <!-- marigold rating star, rising above the book's spine -->
+  <path d="M256 118 l12 24.4 27 3.9 -19.5 19 4.6 26.9 -24.1-12.7 -24.1 12.7 4.6-26.9 -19.5-19 27-3.9z"
+        fill="#e0942c"/>
+</svg>
