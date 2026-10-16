@@ -1,67 +1,29 @@
 <?php
 require __DIR__ . '/includes/auth.php';
 require __DIR__ . '/includes/db.php';
-
-function renderStudentPieChart(string $title, array $values, array $colors, string $totalLabel): void
-{
-  $total = array_sum($values);
-  $segments = [];
-  $start = 0;
-  $index = 0;
-  $valueCount = count($values);
-
-  if ($total > 0) {
-    foreach ($values as $label => $value) {
-      $end = ++$index === $valueCount ? 100 : $start + ((int) $value / $total * 100);
-      $color = $colors[$label] ?? '#4a6b57';
-      $segments[] = $color . ' ' . number_format($start, 3, '.', '') . '% ' . number_format($end, 3, '.', '') . '%';
-      $start = $end;
-    }
-  }
-
-  $gradient = $segments ? 'conic-gradient(' . implode(', ', $segments) . ')' : '#e8ece8';
-  $chartDescription = [];
-  foreach ($values as $label => $value) {
-    $chartDescription[] = $label . ': ' . $value;
-  }
-  ?>
-  <article class="content-card chart-card">
-    <div class="card-header"><h2><?php echo htmlspecialchars($title, ENT_QUOTES, 'UTF-8'); ?></h2></div>
-    <div class="pie-chart-layout">
-      <div class="pie-chart" role="img" aria-label="<?php echo htmlspecialchars($title . ' breakdown. ' . implode(', ', $chartDescription), ENT_QUOTES, 'UTF-8'); ?>" style="background: <?php echo htmlspecialchars($gradient, ENT_QUOTES, 'UTF-8'); ?>">
-        <span class="pie-hole"><strong><?php echo $total; ?></strong><small><?php echo htmlspecialchars($totalLabel, ENT_QUOTES, 'UTF-8'); ?></small></span>
-      </div>
-      <ul class="pie-legend">
-        <?php foreach ($values as $label => $value): ?>
-          <li>
-            <span class="pie-swatch" style="--slice-color: <?php echo htmlspecialchars($colors[$label] ?? '#4a6b57', ENT_QUOTES, 'UTF-8'); ?>"></span>
-            <span class="pie-status"><?php echo htmlspecialchars((string) $label, ENT_QUOTES, 'UTF-8'); ?></span>
-            <strong><?php echo (int) $value; ?></strong>
-            <small><?php echo $total ? number_format($value / $total * 100, 1) : '0.0'; ?>%</small>
-          </li>
-        <?php endforeach; ?>
-      </ul>
-    </div>
-  </article>
-  <?php
-}
+require __DIR__ . '/../portal_account.php';
+require __DIR__ . '/../portal_charts.php';
 
 $userId = (int) $_SESSION['student_id'];
 $sections = [
   'overview' => 'Dashboard',
   'feedback-form' => 'Send Feedback',
   'feedback-history' => 'My Feedback',
-  'submission-form' => 'Submit Request',
-  'submission-history' => 'My Requests',
   'account' => 'Account',
 ];
 $section = (string) ($_GET['section'] ?? 'overview');
 if (!isset($sections[$section])) {
   $section = 'overview';
 }
+$accountTab = (string) ($_GET['account_tab'] ?? 'details');
+if (!in_array($accountTab, ['details', 'security'], true)) {
+  $accountTab = 'details';
+}
 $feedbackCategories = ['Teachers', 'Courses', 'Library', 'Canteen', 'Laboratories', 'Facilities', 'Administration', 'Internal Processes', 'Overall Impression', 'Admissions', 'Campus', 'Events', 'Other'];
 $feedbackCsrf = $_SESSION['student_feedback_csrf'] ?? bin2hex(random_bytes(32));
 $_SESSION['student_feedback_csrf'] = $feedbackCsrf;
+$accountCsrf = $_SESSION['portal_account_csrf'] ?? bin2hex(random_bytes(32));
+$_SESSION['portal_account_csrf'] = $accountCsrf;
 $feedbackNotice = $_SESSION['portal_feedback_notice'] ?? null;
 unset($_SESSION['portal_feedback_notice']);
 
@@ -74,24 +36,12 @@ $userStmt = $pdo->prepare(
 $userStmt->execute([':id' => $userId]);
 $user = $userStmt->fetch();
 $accountUserId = (int) ($user['account_user_id'] ?? 0);
-$feedbackError = '';
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['title'])) {
-    $title = trim($_POST['title']);
-    $category = trim($_POST['category']);
-    $description = trim($_POST['description']);
-
-    if ($title !== '' && $category !== '' && $description !== '') {
-        $stmt = $pdo->prepare('INSERT INTO portal_submissions (user_id, title, category, status, description) VALUES (:user_id, :title, :category, :status, :description)');
-        $stmt->execute([
-            ':user_id' => $userId,
-            ':title' => $title,
-            ':category' => $category,
-            ':status' => 'Submitted',
-            ':description' => $description,
-        ]);
-    }
+$accountError = '';
+$accountNotice = '';
+if ($section === 'account') {
+  [$accountError, $accountNotice] = processPortalAccountPost($pdo, $userId, $accountUserId, 'student', $user, $accountCsrf);
 }
+$feedbackError = '';
 
   if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'submit_feedback') {
     $category = trim((string) ($_POST['feedback_category'] ?? ''));
@@ -127,7 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['title'])) {
         $pdo->prepare('INSERT INTO notifications (feedback_id, admin_id, is_read) SELECT :feedback_id, id, 0 FROM admin')
           ->execute([':feedback_id' => $feedbackId]);
         $pdo->commit();
-        $_SESSION['portal_feedback_notice'] = ['type' => 'success', 'message' => 'Feedback submitted. You can track its status below.'];
+        $_SESSION['portal_feedback_notice'] = ['type' => 'success', 'message' => 'Feedback submitted. You can track its status under My Feedback.'];
         header('Location: dashboard.php?section=feedback-form');
         exit;
       } catch (Throwable $e) {
@@ -140,10 +90,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['title'])) {
     }
   }
 
-$submissionsStmt = $pdo->prepare('SELECT * FROM portal_submissions WHERE user_id = :user_id ORDER BY created_at DESC');
-$submissionsStmt->execute([':user_id' => $userId]);
-$submissions = $submissionsStmt->fetchAll();
-
 $feedbackStmt = $pdo->prepare('SELECT id, category, rating, message, status, submit_date FROM feedback WHERE user_id = :user_id ORDER BY submit_date DESC');
 $feedbackStmt->execute([':user_id' => $accountUserId]);
 $feedbackRows = $feedbackStmt->fetchAll();
@@ -152,11 +98,6 @@ foreach ($feedbackRows as $feedbackRow) {
   if (isset($feedbackCounts[$feedbackRow['status']])) {
     $feedbackCounts[$feedbackRow['status']]++;
   }
-}
-
-$statusCounts = ['Submitted' => 0, 'Under Review' => 0, 'Completed' => 0];
-foreach ($submissions as $submission) {
-    $statusCounts[$submission['status']] = ($statusCounts[$submission['status']] ?? 0) + 1;
 }
 
 $ratingCounts = array_fill(1, 5, 0);
@@ -184,16 +125,7 @@ foreach ($feedbackRows as $feedbackRow) {
     $monthlyActivity[$monthKey]['count']++;
   }
 }
-foreach ($submissions as $submission) {
-  $monthKey = date('Y-m', strtotime($submission['created_at']));
-  if (isset($monthlyActivity[$monthKey])) {
-    $monthlyActivity[$monthKey]['count']++;
-  }
-}
-$totalRequests = count($submissions);
-$activeRequests = $statusCounts['Submitted'] + $statusCounts['Under Review'];
 $totalFeedback = count($feedbackRows);
-$requestStatusColors = ['Submitted' => '#e0942c', 'Under Review' => '#4c7890', 'Completed' => '#4a6b57'];
 $feedbackStatusColors = ['New' => '#e0942c', 'Reviewed' => '#4c7890', 'Resolved' => '#4a6b57'];
 $ratingColors = [1 => '#b85c4b', 2 => '#d98248', 3 => '#e0b64b', 4 => '#79a27a', 5 => '#4a6b57'];
 $ratingChartCounts = [];
@@ -256,18 +188,17 @@ foreach (array_keys($activityCounts) as $monthIndex => $monthLabel) {
 
     <?php if ($section === 'overview'): ?>
       <section class="stats-grid">
-        <article class="stat-card"><span class="stat-label">Total requests</span><strong><?php echo $totalRequests; ?></strong></article>
-        <article class="stat-card"><span class="stat-label">Active requests</span><strong><?php echo $activeRequests; ?></strong></article>
         <article class="stat-card"><span class="stat-label">Feedback sent</span><strong><?php echo $totalFeedback; ?></strong></article>
+        <article class="stat-card"><span class="stat-label">New feedback</span><strong><?php echo $feedbackCounts['New']; ?></strong></article>
+        <article class="stat-card"><span class="stat-label">Resolved feedback</span><strong><?php echo $feedbackCounts['Resolved']; ?></strong></article>
         <article class="stat-card"><span class="stat-label">Average rating</span><strong><?php echo number_format($averageRating, 1); ?><small> / 5</small></strong></article>
       </section>
 
       <section class="chart-grid" aria-label="Activity charts">
-        <?php renderStudentPieChart('Request status', $statusCounts, $requestStatusColors, 'requests'); ?>
-        <?php renderStudentPieChart('Feedback ratings', $ratingChartCounts, $ratingChartColors, 'ratings'); ?>
-        <?php renderStudentPieChart('Feedback topics', $feedbackCategoryCounts, $feedbackCategoryColors, 'feedback'); ?>
-        <?php renderStudentPieChart('Feedback status', $feedbackCounts, $feedbackStatusColors, 'feedback'); ?>
-        <?php renderStudentPieChart('Activity, last six months', $activityCounts, $activityColors, 'events'); ?>
+        <?php renderPortalPieChart('Feedback ratings', $ratingChartCounts, $ratingChartColors, 'ratings'); ?>
+        <?php renderPortalPieChart('Feedback topics', $feedbackCategoryCounts, $feedbackCategoryColors, 'feedback'); ?>
+        <?php renderPortalPieChart('Feedback status', $feedbackCounts, $feedbackStatusColors, 'feedback'); ?>
+        <?php renderPortalPieChart('Feedback activity, last six months', $activityCounts, $activityColors, 'entries'); ?>
       </section>
     <?php elseif ($section === 'feedback-form'): ?>
       <section class="content-card form-card">
@@ -293,31 +224,37 @@ foreach (array_keys($activityCounts) as $monthIndex => $monthLabel) {
           </tbody></table></div>
         <?php endif; ?>
       </section>
-    <?php elseif ($section === 'submission-form'): ?>
-      <section class="content-card form-card">
-        <div class="card-header"><h2>Submit a request</h2></div>
-        <form method="POST" class="submission-form">
-          <div class="field"><label for="title">Title</label><input type="text" id="title" name="title" required></div>
-          <div class="field"><label for="category">Category</label><input type="text" id="category" name="category" required></div>
-          <div class="field"><label for="description">Details</label><textarea id="description" name="description" rows="6" required></textarea></div>
-          <button type="submit" class="btn btn-primary">Submit request</button>
-        </form>
-      </section>
-    <?php elseif ($section === 'submission-history'): ?>
-      <section class="content-card">
-        <div class="card-header"><h2>My requests</h2></div>
-        <?php if (!$submissions): ?><div class="empty-state">No submissions yet.</div><?php else: ?>
-          <div class="table-wrap"><table class="data-table"><thead><tr><th>Title</th><th>Category</th><th>Status</th><th>Submitted</th></tr></thead><tbody>
-            <?php foreach ($submissions as $submission): ?><tr><td><?php echo htmlspecialchars($submission['title'], ENT_QUOTES, 'UTF-8'); ?></td><td><?php echo htmlspecialchars($submission['category'], ENT_QUOTES, 'UTF-8'); ?></td><td><span class="status-badge status-<?php echo strtolower(str_replace(' ', '-', $submission['status'])); ?>"><?php echo htmlspecialchars($submission['status'], ENT_QUOTES, 'UTF-8'); ?></span></td><td><?php echo htmlspecialchars(date('d M Y', strtotime($submission['created_at'])), ENT_QUOTES, 'UTF-8'); ?></td></tr><?php endforeach; ?>
-          </tbody></table></div>
-        <?php endif; ?>
-      </section>
     <?php elseif ($section === 'account'): ?>
-      <section class="content-card account-card">
-        <div class="card-header"><h2>Account details</h2></div>
-        <ul class="info-list"><li><span>Full name</span><strong><?php echo htmlspecialchars($user['full_name'] ?? '', ENT_QUOTES, 'UTF-8'); ?></strong></li><li><span>Email</span><strong><?php echo htmlspecialchars($user['email'] ?? '', ENT_QUOTES, 'UTF-8'); ?></strong></li><li><span>Username</span><strong><?php echo htmlspecialchars($user['username'] ?? '', ENT_QUOTES, 'UTF-8'); ?></strong></li></ul>
-        <a href="forgot_password.php" class="btn btn-outline">Reset password</a>
-      </section>
+      <nav class="account-tabs" aria-label="Account settings">
+        <a class="<?php echo $accountTab === 'details' ? 'active' : ''; ?>" href="dashboard.php?section=account&account_tab=details">Profile details</a>
+        <a class="<?php echo $accountTab === 'security' ? 'active' : ''; ?>" href="dashboard.php?section=account&account_tab=security">Security</a>
+      </nav>
+      <?php if ($accountError): ?><div class="alert alert-error" role="alert"><?php echo htmlspecialchars($accountError, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
+      <?php if ($accountNotice): ?><div class="alert alert-success" role="status"><?php echo htmlspecialchars($accountNotice, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
+      <?php if ($accountTab === 'details'): ?>
+        <section class="content-card account-card">
+          <div class="card-header"><h2>Profile information</h2><p>Update your name and username. Email changes require administrator verification.</p></div>
+          <form method="POST" action="dashboard.php?section=account&account_tab=details" class="submission-form account-form">
+            <input type="hidden" name="action" value="update_profile"><input type="hidden" name="account_csrf_token" value="<?php echo htmlspecialchars($accountCsrf, ENT_QUOTES, 'UTF-8'); ?>">
+            <div class="field"><label for="full_name">Full name</label><input id="full_name" name="full_name" maxlength="100" value="<?php echo htmlspecialchars($_POST['full_name'] ?? $user['full_name'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" required></div>
+            <div class="field"><label for="username">Username</label><input id="username" name="username" minlength="3" maxlength="60" pattern="[A-Za-z0-9._-]{3,60}" value="<?php echo htmlspecialchars($_POST['username'] ?? $user['username'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" required></div>
+            <div class="field"><label for="email">Email address</label><input id="email" type="email" value="<?php echo htmlspecialchars($user['email'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" readonly></div>
+            <button type="submit" class="btn btn-primary">Save profile</button>
+          </form>
+        </section>
+      <?php else: ?>
+        <section class="content-card account-card">
+          <div class="card-header"><h2>Reset password</h2><p>Verify your current password before choosing a new one.</p></div>
+          <form method="POST" action="dashboard.php?section=account&account_tab=security" class="submission-form account-form">
+            <input type="hidden" name="action" value="change_password"><input type="hidden" name="account_csrf_token" value="<?php echo htmlspecialchars($accountCsrf, ENT_QUOTES, 'UTF-8'); ?>">
+            <div class="field"><label for="current_password">Current password</label><input id="current_password" name="current_password" type="password" autocomplete="current-password" required></div>
+            <div class="field"><label for="new_password">New password</label><input id="new_password" name="new_password" type="password" minlength="8" autocomplete="new-password" required></div>
+            <div class="field"><label for="confirm_password">Confirm new password</label><input id="confirm_password" name="confirm_password" type="password" minlength="8" autocomplete="new-password" required></div>
+            <button type="submit" class="btn btn-primary">Update password</button>
+          </form>
+          <div class="portal-inline top-space"><a href="forgot_password.php">Forgot your current password?</a></div>
+        </section>
+      <?php endif; ?>
     <?php endif; ?>
   </main>
 </body>

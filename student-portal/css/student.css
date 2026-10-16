@@ -456,6 +456,27 @@ a { color: inherit; text-decoration: none; }
 .chart-card { min-width: 0; }
 .chart-card .card-header h2 { font-size: 24px; }
 
+.account-tabs {
+  display: flex;
+  gap: 4px;
+  margin: 0 0 18px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+.account-tabs a {
+  padding: 9px 13px;
+  border-radius: 6px;
+  color: var(--ink-soft);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.account-tabs a.active { background: var(--moss-soft); color: var(--moss); }
+.account-form { max-width: 560px; }
+.account-card .card-header p { margin: -10px 0 18px; color: var(--ink-soft); font-size: 13px; line-height: 1.5; }
+.account-help { margin: 16px 0 0; color: var(--ink-soft); font-size: 12px; }
+
 .pie-chart-layout {
   display: grid;
   grid-template-columns: minmax(100px, 0.8fr) minmax(110px, 1fr);

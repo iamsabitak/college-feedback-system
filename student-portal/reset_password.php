@@ -9,7 +9,7 @@ $success = '';
 if ($token === '') {
     $error = 'Reset token is missing.';
 } else {
-    $stmt = $pdo->prepare('SELECT rt.user_id, rt.expires_at, u.email FROM portal_reset_tokens rt INNER JOIN portal_users u ON u.id = rt.user_id WHERE rt.token = :token AND rt.used_at IS NULL AND rt.expires_at > NOW() LIMIT 1');
+    $stmt = $pdo->prepare('SELECT rt.user_id, rt.expires_at, u.email FROM portal_reset_tokens rt INNER JOIN portal_users u ON u.id = rt.user_id WHERE rt.token = :token AND rt.used_at IS NULL AND rt.expires_at > NOW() AND u.role = \'student\' LIMIT 1');
     $stmt->execute([':token' => $token]);
     $record = $stmt->fetch();
 
@@ -32,21 +32,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($newPassword !== $confirmPassword) {
         $error = 'Passwords do not match.';
     } else {
-        $verify = $pdo->prepare('SELECT rt.user_id, rt.expires_at FROM portal_reset_tokens rt WHERE rt.token = :token AND rt.used_at IS NULL AND rt.expires_at > NOW() LIMIT 1');
+        $verify = $pdo->prepare('SELECT rt.user_id, u.email FROM portal_reset_tokens rt INNER JOIN portal_users u ON u.id = rt.user_id WHERE rt.token = :token AND rt.used_at IS NULL AND rt.expires_at > NOW() AND u.role = \'student\' LIMIT 1');
         $verify->execute([':token' => $postToken]);
         $valid = $verify->fetch();
 
         if (!$valid) {
             $error = 'This reset link is no longer valid.';
         } else {
-            $hash = password_hash($newPassword, PASSWORD_DEFAULT);
-            $updateUser = $pdo->prepare('UPDATE portal_users SET password_hash = :password_hash WHERE id = :user_id LIMIT 1');
-            $updateUser->execute([':password_hash' => $hash, ':user_id' => $valid['user_id']]);
-
-            $markUsed = $pdo->prepare('UPDATE portal_reset_tokens SET used_at = NOW() WHERE token = :token LIMIT 1');
-            $markUsed->execute([':token' => $postToken]);
-
-            $success = 'Your password was updated successfully.';
+            try {
+              $hash = password_hash($newPassword, PASSWORD_DEFAULT);
+              $pdo->beginTransaction();
+              $updatePortal = $pdo->prepare('UPDATE portal_users SET password_hash = :password_hash WHERE id = :user_id AND role = \'student\' LIMIT 1');
+              $updatePortal->execute([':password_hash' => $hash, ':user_id' => $valid['user_id']]);
+              $updateManaged = $pdo->prepare('UPDATE users SET password_hash = :password_hash, must_change_password = 0 WHERE LOWER(email) = LOWER(:email) AND role = \'student\'');
+              $updateManaged->execute([':password_hash' => $hash, ':email' => $valid['email']]);
+              $markUsed = $pdo->prepare('UPDATE portal_reset_tokens SET used_at = NOW() WHERE token = :token AND used_at IS NULL LIMIT 1');
+              $markUsed->execute([':token' => $postToken]);
+              $pdo->commit();
+              $success = 'Your password was updated successfully.';
+            } catch (Throwable $exception) {
+              if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+              }
+              error_log('Student password reset failed: ' . $exception->getMessage());
+              $error = 'Unable to update your password right now. Please try again.';
+            }
         }
     }
 }
