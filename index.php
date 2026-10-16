@@ -114,6 +114,24 @@
             <a href="public-portal/index.php" class="card-link">Explore Public Portal<i class="fas fa-arrow-right"></i></a>
           </div>
         </div>
+        <div class="portal-card">
+          <div class="card-icon"><i class="fas fa-user-graduate"></i></div>
+          <div class="card-content">
+            <span class="card-label">Student access</span>
+            <h2>Student Portal</h2>
+            <p>Track your submissions, review status, and recover passwords in one place.</p>
+            <a href="student-portal/login.php" class="card-link">Open Student Portal<i class="fas fa-arrow-right"></i></a>
+          </div>
+        </div>
+        <div class="portal-card">
+          <div class="card-icon"><i class="fas fa-briefcase"></i></div>
+          <div class="card-content">
+            <span class="card-label">Staff access</span>
+            <h2>Staff Portal</h2>
+            <p>Review active submissions and manage account access for members of the team.</p>
+            <a href="staff-portal/login.php" class="card-link">Open Staff Portal<i class="fas fa-arrow-right"></i></a>
+          </div>
+        </div>
         <div class="portal-card admin">
           <div class="card-icon"><i class="fas fa-lock"></i></div>
           <div class="card-content">

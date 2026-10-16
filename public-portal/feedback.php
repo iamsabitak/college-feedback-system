@@ -9,6 +9,7 @@ session_start();
 $errors = $_SESSION['fb_errors'] ?? [];
 $old = $_SESSION['fb_old'] ?? [];
 unset($_SESSION['fb_errors'], $_SESSION['fb_old']);
+$publicCategories = ['Teachers', 'Courses', 'Library', 'Canteen', 'Laboratories', 'Facilities', 'Administration', 'Internal Processes', 'Overall Impression', 'Admissions', 'Campus', 'Events', 'Other'];
 
 $pageTitle = 'Give Feedback';
 $active = 'feedback';
@@ -39,7 +40,7 @@ include 'includes/header.php';
           <span class="progress-fill"></span>
         </div>
         <ol class="progress-steps">
-          <li data-progress="identity"><span class="progress-dot"></span><span>Who you are</span></li>
+          <li data-progress="topic"><span class="progress-dot"></span><span>Topic</span></li>
           <li data-progress="rating"><span class="progress-dot"></span><span>Your rating</span></li>
           <li data-progress="comment"><span class="progress-dot"></span><span>Your comment</span></li>
           <li data-progress="privacy"><span class="progress-dot"></span><span>Privacy</span></li>
@@ -55,37 +56,18 @@ include 'includes/header.php';
 
       <form id="feedbackForm" action="submit_feedback.php" method="POST" novalidate>
 
-        <section class="form-section" aria-labelledby="identityHeading">
+        <section class="form-section" aria-labelledby="topicHeading">
           <div class="form-section-heading">
             <span class="section-index">01</span>
-            <div><h2 id="identityHeading">Who you are</h2><p>Choose the perspective that best fits your feedback.</p></div>
+            <div><h2 id="topicHeading">Choose a topic</h2><p>Select the area your public feedback is about.</p></div>
           </div>
-          <div class="field" data-field="submitter_type">
-            <label>I am a... <span class="hint">(required)</span></label>
-            <div class="role-select-group">
-              <label class="role-pill <?php echo (($old['submitter_type'] ?? '') === 'Student') ? 'selected' : ''; ?>">
-                <input type="radio" name="submitter_type" value="Student" <?php echo (($old['submitter_type'] ?? '') === 'Student') ? 'checked' : ''; ?>>
-                <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5"/></svg>
-                <span>Student</span>
-              </label>
-              <label class="role-pill <?php echo (($old['submitter_type'] ?? '') === 'Teacher & Staff') ? 'selected' : ''; ?>">
-                <input type="radio" name="submitter_type" value="Teacher & Staff" <?php echo (($old['submitter_type'] ?? '') === 'Teacher & Staff') ? 'checked' : ''; ?>>
-                <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21a8 8 0 1 0-16 0"/><circle cx="12" cy="7" r="4"/></svg>
-                <span>Teacher / Staff</span>
-              </label>
-              <label class="role-pill <?php echo (($old['submitter_type'] ?? '') === 'Visitor & Outsider') ? 'selected' : ''; ?>">
-                <input type="radio" name="submitter_type" value="Visitor & Outsider" <?php echo (($old['submitter_type'] ?? '') === 'Visitor & Outsider') ? 'checked' : ''; ?>>
-                <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
-                <span>Visitor / Outsider</span>
-              </label>
-            </div>
-            <div class="error-text"><?php echo htmlspecialchars($errors['submitter_type'] ?? ''); ?></div>
-          </div>
-
           <div class="field" data-field="category">
-            <label for="category">Category <span class="hint">(required — based on your role above)</span></label>
-            <select id="category" name="category" disabled>
-              <option value="" disabled selected>Select your role first</option>
+            <label for="category">Category <span class="hint">(required)</span></label>
+            <select id="category" name="category">
+              <option value="" disabled <?php echo empty($old['category']) ? 'selected' : ''; ?>>Select a topic</option>
+              <?php foreach ($publicCategories as $publicCategory): ?>
+                <option value="<?php echo htmlspecialchars($publicCategory, ENT_QUOTES, 'UTF-8'); ?>" <?php echo ($old['category'] ?? '') === $publicCategory ? 'selected' : ''; ?>><?php echo htmlspecialchars($publicCategory, ENT_QUOTES, 'UTF-8'); ?></option>
+              <?php endforeach; ?>
             </select>
             <div class="error-text"><?php echo htmlspecialchars($errors['category'] ?? ''); ?></div>
           </div>

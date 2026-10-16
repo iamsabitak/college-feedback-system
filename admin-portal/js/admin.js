@@ -765,7 +765,7 @@ document.addEventListener('DOMContentLoaded', function () {
       detailModal.dataset.feedbackId = String(feedbackId);
       const rating = Number(entry.rating) || 0;
       detailType.textContent = entry.submitter_type;
-      detailType.className = 'badge ' + ({ 'Student': 'badge-student', 'Teacher & Staff': 'badge-staff', 'Visitor & Outsider': 'badge-visitor' }[entry.submitter_type] || '');
+      detailType.className = 'badge ' + ({ 'Student': 'badge-student', 'Teacher & Staff': 'badge-staff', 'Visitor & Outsider': 'badge-visitor', 'Public': 'badge-visitor' }[entry.submitter_type] || '');
       document.getElementById('feedbackModalTitle').textContent = entry.display_name || 'Feedback Submission';
       document.getElementById('feedbackModalDate').textContent = 'Submitted ' + entry.submit_date;
       document.getElementById('feedbackModalCategory').textContent = entry.category;
@@ -803,7 +803,7 @@ document.addEventListener('DOMContentLoaded', function () {
           item.appendChild(dot);
         }
         const type = document.createElement('span');
-        type.className = 'badge ' + ({ 'Student': 'badge-student', 'Teacher & Staff': 'badge-staff', 'Visitor & Outsider': 'badge-visitor' }[entry.submitter_type] || '');
+        type.className = 'badge ' + ({ 'Student': 'badge-student', 'Teacher & Staff': 'badge-staff', 'Visitor & Outsider': 'badge-visitor', 'Public': 'badge-visitor' }[entry.submitter_type] || '');
         type.textContent = entry.submitter_type;
         const detail = document.createElement('span');
         detail.className = 'notification-item-detail';
@@ -984,7 +984,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const rating = Number(entry.rating) || 0;
     feedbackFields.title.textContent = entry.display_name || (entry.is_anonymous ? 'Anonymous Submission' : 'Unnamed');
     feedbackFields.type.textContent = entry.submitter_type;
-    feedbackFields.type.className = 'badge ' + ({ 'Student': 'badge-student', 'Teacher & Staff': 'badge-staff', 'Visitor & Outsider': 'badge-visitor' }[entry.submitter_type] || '');
+    feedbackFields.type.className = 'badge ' + ({ 'Student': 'badge-student', 'Teacher & Staff': 'badge-staff', 'Visitor & Outsider': 'badge-visitor', 'Public': 'badge-visitor' }[entry.submitter_type] || '');
     feedbackFields.date.textContent = 'Submitted ' + entry.submit_date;
     feedbackFields.category.textContent = entry.category;
     feedbackFields.rating.textContent = '★'.repeat(rating) + '☆'.repeat(5 - rating) + '  ' + rating + ' out of 5 stars';
@@ -1015,7 +1015,8 @@ document.addEventListener('DOMContentLoaded', function () {
       feedbackFields.type.className = 'badge ' + ({
         'Student': 'badge-student',
         'Teacher & Staff': 'badge-staff',
-        'Visitor & Outsider': 'badge-visitor'
+        'Visitor & Outsider': 'badge-visitor',
+        'Public': 'badge-visitor'
       }[btn.dataset.feedbackType] || '');
       feedbackFields.date.textContent = 'Submitted ' + btn.dataset.feedbackDate;
       feedbackFields.category.textContent = btn.dataset.feedbackCategory;

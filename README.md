@@ -7,18 +7,26 @@ Built exactly to the stack named in Section 9.2 of the project proposal:
 
 ```
 college-feedback-system/
-├── public-portal/     ← Frontend Portal (feedback form, home, about, contact)
-├── admin-portal/      ← Backend/Admin Portal (login, dashboard, search/filter/delete)
+├── public-portal/      ← Frontend portal for public feedback and contact pages
+├── student-portal/     ← Student login, dashboard, and password reset flows
+├── staff-portal/       ← Staff login, review dashboard, and account management
+├── admin-portal/       ← Admin login, dashboard, status updates, and reports
 ├── database/
-│   ├── schema.sql             ← Run this once to create the database + tables
-│   ├── migration_status.sql   ← Run once to add feedback workflow statuses
-│   ├── migration_otp.sql      ← Run once to add OTP password recovery
-│   ├── migration_profile.sql  ← Run once to add admin profile fields
-│   └── migration_notifications.sql ← Run once to add per-admin notification read state
-└── composer.json      ← PHPMailer dependency
+│   ├── schema.sql                ← Initial project schema
+│   ├── migration_status.sql      ← Feedback status workflow
+│   ├── migration_otp.sql         ← Admin OTP recovery tables
+│   ├── migration_profile.sql     ← Admin profile fields
+│   ├── migration_notifications.sql← Admin notification read state
+│   ├── migration_users.sql        ← Student/staff user table and account audit model
+│   ├── migration_status_log.sql   ← Feedback status log / audit history
+│   └── college_feedback.sql      ← Legacy schema dump for reference
+├── composer.json       ← PHPMailer dependency
+├── index.php           ← Portal landing page with Public, Student, and Staff/Admin entry points
+├── PROJECT_DOCUMENTATION.md
+└── README.md
 ```
 
-Two folders, one per portal, matching the two-portal scope described in Section 4.
+The project now spans public, student, staff, and admin portal flows while leaving the original public and admin portals intact.
 
 ## Setup (XAMPP)
 
@@ -34,8 +42,18 @@ Two folders, one per portal, matching the two-portal scope described in Section 
    This creates the `college_feedback_system` database, the `feedback` and `admin` tables, a
    default admin account, and sample feedback rows. You can also import `schema.sql` through
    phpMyAdmin.
-4. Visit:
+4. Apply the role and status migrations for the student/staff additions:
+   ```sh
+   mysql -u root -proot < database/migration_student_staff.sql
+   mysql -u root -proot < database/migration_accounts.sql
+   mysql -u root -proot < database/migration_student_approvals.sql
+   mysql -u root -proot < database/migration_public_feedback_type.sql
+   mysql -u root -proot < database/migration_status_log.sql
+   ```
+5. Visit:
    - Public portal: `http://localhost/college-feedback-system/public-portal/`
+   - Student portal: `http://localhost/college-feedback-system/student-portal/login.php`
+   - Staff portal: `http://localhost/college-feedback-system/staff-portal/login.php`
    - Admin portal: `http://localhost/college-feedback-system/admin-portal/login.php`
 
 ### Status migration
@@ -129,6 +147,8 @@ process is needed.
 
 - **Username:** `admin`
 - **Password:** `admin123`
+
+> Local demo database credentials are intentionally `root` / `root` for the XAMPP setup. These credentials are for local-only development and should not be used in a shared or production environment.
 
 Change this in the `admin` table (via phpMyAdmin) before using the system for real — generate a new
 hash with PHP's `password_hash('yourpassword', PASSWORD_DEFAULT)`.

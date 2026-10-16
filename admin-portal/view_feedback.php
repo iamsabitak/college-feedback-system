@@ -22,6 +22,7 @@ function badgeClass($type) {
         'Student' => 'badge-student',
         'Teacher & Staff' => 'badge-staff',
         'Visitor & Outsider' => 'badge-visitor',
+        'Public' => 'badge-visitor',
         default => '',
     };
 }

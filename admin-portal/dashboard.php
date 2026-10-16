@@ -113,7 +113,7 @@ if ($search !== '') {
   $params[':q_name'] = '%' . $search . '%';
   $params[':q_category'] = '%' . $search . '%';
 }
-if ($type !== '' && in_array($type, ['Student', 'Teacher & Staff', 'Visitor & Outsider'], true)) {
+if ($type !== '' && in_array($type, ['Student', 'Teacher & Staff', 'Visitor & Outsider', 'Public'], true)) {
     $where[] = 'submitter_type = :type';
     $params[':type'] = $type;
 }
@@ -168,6 +168,7 @@ function badgeClass($type) {
         'Student' => 'badge-student',
         'Teacher & Staff' => 'badge-staff',
         'Visitor & Outsider' => 'badge-visitor',
+        'Public' => 'badge-visitor',
         default => '',
     };
 }
@@ -304,7 +305,7 @@ $weeklyPoints = implode(' ', array_map(static fn($index, $count) => round(8 + ($
       <div class="donut-wrap">
         <svg class="donut-chart" viewBox="0 0 120 120" role="img" aria-label="Submitter type split">
           <circle class="donut-track" cx="60" cy="60" r="48"/>
-          <?php $submitterColors = ['Student' => '#4a6b57', 'Teacher & Staff' => '#718ca0', 'Visitor & Outsider' => '#e0942c']; $submitterOffset = 0; foreach ($submitterBreakdown as $submitterRow): $submitterCount = (int) $submitterRow['total']; $submitterPercent = $submitterTotal > 0 ? round(($submitterCount / $submitterTotal) * 100) : 0; $submitterLength = $submitterTotal > 0 ? ($submitterPercent / 100) * 301.592894 : 0; ?><circle class="donut-segment" cx="60" cy="60" r="48" stroke="<?php echo $submitterColors[$submitterRow['submitter_type']] ?? '#e0942c'; ?>" stroke-dasharray="<?php echo $submitterLength; ?> 301.592894" stroke-dashoffset="<?php echo -$submitterOffset; ?>"/>
+          <?php $submitterColors = ['Student' => '#4a6b57', 'Teacher & Staff' => '#718ca0', 'Visitor & Outsider' => '#e0942c', 'Public' => '#e0942c']; $submitterOffset = 0; foreach ($submitterBreakdown as $submitterRow): $submitterCount = (int) $submitterRow['total']; $submitterPercent = $submitterTotal > 0 ? round(($submitterCount / $submitterTotal) * 100) : 0; $submitterLength = $submitterTotal > 0 ? ($submitterPercent / 100) * 301.592894 : 0; ?><circle class="donut-segment" cx="60" cy="60" r="48" stroke="<?php echo $submitterColors[$submitterRow['submitter_type']] ?? '#e0942c'; ?>" stroke-dasharray="<?php echo $submitterLength; ?> 301.592894" stroke-dashoffset="<?php echo -$submitterOffset; ?>"/>
           <?php $submitterOffset += $submitterLength; endforeach; ?>
         </svg>
         <div class="donut-center"><strong><?php echo $submitterTotal; ?></strong><span>submitters</span></div>
@@ -387,7 +388,7 @@ $weeklyPoints = implode(' ', array_map(static fn($index, $count) => round(8 + ($
       <section class="filter-panel" id="filterPanel" aria-label="Feedback filters" hidden>
         <form method="GET" class="filter-panel-form">
           <div class="filter-panel-grid">
-        <div class="filter-group"><label for="type">Submitter Type</label><select id="type" name="type"><option value="">All Types</option><option value="Student" <?php echo $type === 'Student' ? 'selected' : ''; ?>>Student</option><option value="Teacher & Staff" <?php echo $type === 'Teacher & Staff' ? 'selected' : ''; ?>>Teacher / Staff</option><option value="Visitor & Outsider" <?php echo $type === 'Visitor & Outsider' ? 'selected' : ''; ?>>Visitor / Outsider</option></select></div>
+        <div class="filter-group"><label for="type">Submitter Type</label><select id="type" name="type"><option value="">All Types</option><option value="Public" <?php echo $type === 'Public' ? 'selected' : ''; ?>>Public</option><option value="Student" <?php echo $type === 'Student' ? 'selected' : ''; ?>>Student</option><option value="Teacher & Staff" <?php echo $type === 'Teacher & Staff' ? 'selected' : ''; ?>>Teacher / Staff</option><option value="Visitor & Outsider" <?php echo $type === 'Visitor & Outsider' ? 'selected' : ''; ?>>Visitor / Outsider</option></select></div>
         <div class="filter-group"><label for="status">Status</label><select id="status" name="status"><option value="">All Statuses</option><?php foreach (['New', 'Reviewed', 'Resolved'] as $option): ?><option value="<?php echo $option; ?>" <?php echo $status === $option ? 'selected' : ''; ?>><?php echo $option; ?></option><?php endforeach; ?></select></div>
         <div class="filter-group"><label for="category">Category</label><select id="category" name="category"><option value="">All Categories</option><?php foreach ($categories as $c): ?><option value="<?php echo htmlspecialchars($c, ENT_QUOTES, 'UTF-8'); ?>" <?php echo $category === $c ? 'selected' : ''; ?>><?php echo htmlspecialchars($c, ENT_QUOTES, 'UTF-8'); ?></option><?php endforeach; ?></select></div>
         <div class="filter-group"><label for="rating">Rating</label><select id="rating" name="rating"><option value="">Any Rating</option><?php for ($i = 5; $i >= 1; $i--): ?><option value="<?php echo $i; ?>" <?php echo $rating === (string) $i ? 'selected' : ''; ?>><?php echo $i; ?> Star<?php echo $i > 1 ? 's' : ''; ?></option><?php endfor; ?></select></div>

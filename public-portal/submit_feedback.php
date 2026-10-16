@@ -46,9 +46,8 @@ if (!isset($pdo)) {
     exit;
 }
 
-$allowedTypes = ['Student', 'Teacher & Staff', 'Visitor & Outsider'];
-
-$submitter_type = trim($_POST['submitter_type'] ?? '');
+$allowedCategories = ['Teachers', 'Courses', 'Library', 'Canteen', 'Laboratories', 'Facilities', 'Administration', 'Internal Processes', 'Overall Impression', 'Admissions', 'Campus', 'Events', 'Other'];
+$submitter_type = 'Public';
 $category       = trim($_POST['category'] ?? '');
 $rating         = (int) ($_POST['rating'] ?? 0);
 $message        = trim($_POST['message'] ?? '');
@@ -63,10 +62,7 @@ if ($submitter_name === '') {
 
 $errors = [];
 
-if (!in_array($submitter_type, $allowedTypes, true)) {
-    $errors['submitter_type'] = 'Please select who you are.';
-}
-if ($category === '' || feedbackStringLength($category) > 100) {
+if (!in_array($category, $allowedCategories, true)) {
     $errors['category'] = 'Please choose a valid category.';
 }
 if ($rating < 1 || $rating > 5) {
@@ -85,7 +81,6 @@ if (!empty($errors)) {
     feedbackDebugOutput('Feedback validation failed', [
         'received_POST' => $_POST,
         'processed_values' => [
-            'submitter_type' => $submitter_type,
             'category' => $category,
             'rating' => $rating,
             'message' => $message,
@@ -99,7 +94,6 @@ if (!empty($errors)) {
     }
     $_SESSION['fb_errors'] = $errors;
     $_SESSION['fb_old'] = [
-        'submitter_type' => $submitter_type,
         'category'       => $category,
         'rating'         => $rating,
         'message'        => $message,

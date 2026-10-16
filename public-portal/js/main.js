@@ -96,7 +96,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     function answer(question) {
       const text = question.toLowerCase();
-      if (/(feedback|submit|complaint|suggestion)/.test(text)) return { text: 'You can submit feedback in about two minutes: choose your role, select a category, add a 1–5 rating, then write your comment.', action: { label: 'Open feedback form', href: 'feedback.php' } };
+      if (/(feedback|submit|complaint|suggestion)/.test(text)) return { text: 'You can submit feedback in about two minutes: select a topic, add a 1–5 rating, then write your comment.', action: { label: 'Open feedback form', href: 'feedback.php' } };
       if (/(anonymous|privacy|name|identity)/.test(text)) return { text: 'Yes. Enable “Submit Anonymously” in the form. The name field is disabled before submission, so no name is collected or stored.', action: { label: 'Submit anonymous feedback', href: 'feedback.php' } };
       if (/(program|course|bca|bbs|mbs|study|admission)/.test(text)) return { text: 'Patan Nistha Campus offers BCA, BBS, and MBS programs. The official site has the current admission information and notices.', action: { label: 'View official admissions info', href: 'https://patannistha.edu.np/', external: true } };
       if (/(contact|phone|email|location|address|where|gwarko|lalitpur)/.test(text)) return { text: 'The campus is in Balkumari, Gwarko, Lalitpur. Call +977-01-5186497 or email info@patannistha.edu.np.', action: { label: 'Open contact details', href: 'contact.php' } };
@@ -241,50 +241,12 @@ document.addEventListener('DOMContentLoaded', function () {
   const form = document.getElementById('feedbackForm');
   if (!form) return;
 
-  // Role -> category list (Section 6.1 / Module 1: role-based category list)
-  const categoriesByRole = {
-    'Student': ['Teachers', 'Courses', 'Library', 'Canteen', 'Laboratories', 'Other'],
-    'Teacher & Staff': ['Facilities', 'Administration', 'Internal Processes', 'Other'],
-    'Visitor & Outsider': ['Overall Impression', 'Admissions', 'Campus', 'Events', 'Other']
-  };
-
-  const rolePills = document.querySelectorAll('.role-pill');
-  const roleRadios = document.querySelectorAll('input[name="submitter_type"]');
   const categorySelect = document.getElementById('category');
   const nameField = document.getElementById('nameField');
   const nameInput = document.getElementById('submitter_name');
   const anonToggle = document.getElementById('is_anonymous');
 
-  function populateCategories(role) {
-    categorySelect.innerHTML = '<option value="" disabled selected>Select a category</option>';
-    (categoriesByRole[role] || []).forEach(function (cat) {
-      const opt = document.createElement('option');
-      opt.value = cat;
-      opt.textContent = cat;
-      categorySelect.appendChild(opt);
-    });
-    categorySelect.disabled = false;
-  }
-
-  rolePills.forEach(function (pill) {
-    pill.addEventListener('click', function () {
-      rolePills.forEach(function (p) { p.classList.remove('selected'); });
-      pill.classList.add('selected');
-      pill.classList.remove('pop');
-      void pill.offsetWidth;
-      pill.classList.add('pop');
-      const radio = pill.querySelector('input[type="radio"]');
-      radio.checked = true;
-      populateCategories(radio.value);
-      clearError('submitter_type');
-      updateFormProgress();
-    });
-  });
-
-  // If a role was already chosen (e.g. validation re-render), populate categories
-  roleRadios.forEach(function (r) {
-    if (r.checked) populateCategories(r.value);
-  });
+  categorySelect.disabled = false;
 
   /* ---------- Anonymous toggle: actually removes the name field ---------- */
   function applyAnonState() {
@@ -316,7 +278,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const progressFill = document.querySelector('.progress-fill');
   const progressSummary = document.querySelector('.progress-summary');
   const progressLabels = {
-    identity: document.querySelector('[data-progress="identity"]'),
+    topic: document.querySelector('[data-progress="topic"]'),
     rating: document.querySelector('[data-progress="rating"]'),
     comment: document.querySelector('[data-progress="comment"]'),
     privacy: document.querySelector('[data-progress="privacy"]')
@@ -324,11 +286,11 @@ document.addEventListener('DOMContentLoaded', function () {
   const ratingDescriptions = ['', 'Very Poor', 'Poor', 'Fair', 'Very Good', 'Excellent'];
 
   function updateFormProgress() {
-    const identityComplete = !!document.querySelector('input[name="submitter_type"]:checked') && !!categorySelect.value;
+    const topicComplete = !!categorySelect.value;
     const ratingComplete = !!ratingInput.value;
     const commentComplete = messageInput.value.trim().length >= 5;
     const privacyComplete = anonToggle.checked || nameInput.value.trim().length > 0;
-    const completion = { identity: identityComplete, rating: ratingComplete, comment: commentComplete, privacy: privacyComplete };
+    const completion = { topic: topicComplete, rating: ratingComplete, comment: commentComplete, privacy: privacyComplete };
     let completed = 0;
 
     Object.keys(completion).forEach(function (section) {
@@ -402,9 +364,6 @@ document.addEventListener('DOMContentLoaded', function () {
   form.addEventListener('submit', function (e) {
     let valid = true;
     document.querySelectorAll('.field').forEach(function (f) { f.classList.remove('has-error'); });
-
-    const roleChosen = document.querySelector('input[name="submitter_type"]:checked');
-    if (!roleChosen) { showError('submitter_type', 'Please select who you are.'); valid = false; }
 
     if (!categorySelect.value) { showError('category', 'Please choose a category.'); valid = false; }
 
