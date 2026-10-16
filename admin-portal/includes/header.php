@@ -40,6 +40,22 @@ if (isset($pdo) && !empty($_SESSION['admin_id'])) {
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h13M8 12h13M8 18h13"/><path d="M3 6h.01M3 12h.01M3 18h.01"/></svg>
         Feedback List
       </a>
+      <a href="status_reports.php" class="sb-link <?php echo $active === 'status-reports' ? 'active' : ''; ?>">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 18V6"/><path d="M10 18V10"/><path d="M16 18v-7"/><path d="M22 18V4"/></svg>
+        Status Reports
+      </a>
+      <a href="accounts_manage.php?tab=accounts&amp;category=all" class="sb-link <?php echo $active === 'accounts' ? 'active' : ''; ?>">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 19v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="10" cy="6.5" r="3.5"/><path d="M20 19v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Staff &amp; students
+      </a>
+      <a href="student_approvals.php" class="sb-link <?php echo $active === 'student-approvals' ? 'active' : ''; ?>">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="4"/><path d="M3 21v-2a6 6 0 0 1 12 0v2"/><path d="m16 11 2 2 4-4"/></svg>
+        Student approvals
+      </a>
+      <a href="accounts_manage.php?tab=audit" class="sb-link <?php echo $active === 'account-audit' ? 'active' : ''; ?>">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3h8l4 4v14H4V3h4Z"/><path d="M8 11h8M8 15h8M8 7h3"/></svg>
+        Account audit log
+      </a>
       <a href="../public-portal/index.php" class="sb-link" target="_blank">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg>
         View Public Site

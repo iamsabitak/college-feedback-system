@@ -76,7 +76,7 @@ include 'includes/header.php';
     </div>
 
     <div class="stat-strip">
-      <div class="stat"><div class="stat-num" data-count="3">3</div><div class="stat-label">Feedback Groups</div></div>
+      <div class="stat"><div class="stat-num" data-count="13">13</div><div class="stat-label">Feedback Topics</div></div>
       <div class="stat"><div class="stat-num">1&ndash;5</div><div class="stat-label">Star Rating</div></div>
       <div class="stat"><div class="stat-num" data-count="100" data-suffix="%">100%</div><div class="stat-label">Anonymous Option</div></div>
     </div>
@@ -86,9 +86,9 @@ include 'includes/header.php';
 <section class="section">
   <div class="container">
     <div class="section-head">
-      <span class="section-tag">Who can submit</span>
-      <h2>A single form, built for three kinds of voices</h2>
-      <p>Choose your role and the form adapts — showing the categories that actually apply to you.</p>
+      <span class="section-tag">Open to everyone</span>
+      <h2>One public form for every campus voice</h2>
+      <p>Choose a topic, rate your experience, and share feedback. No portal account or role selection is needed.</p>
     </div>
 
     <div class="role-grid">
@@ -96,22 +96,22 @@ include 'includes/header.php';
         <div class="role-icon">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5"/></svg>
         </div>
-        <h3>Students</h3>
-        <p>Share feedback about teachers, courses, the library, canteen, or laboratories.</p>
+        <h3>Learning &amp; teaching</h3>
+        <p>Share feedback about teachers, courses, or laboratories.</p>
       </div>
       <div class="role-card">
         <div class="role-icon">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21a8 8 0 1 0-16 0"/><circle cx="12" cy="7" r="4"/></svg>
         </div>
-        <h3>Teachers &amp; Staff</h3>
-        <p>Report on facilities, administration, or internal processes that affect your work.</p>
+        <h3>Campus services</h3>
+        <p>Comment on the library, canteen, campus, or your overall experience.</p>
       </div>
       <div class="role-card">
         <div class="role-icon">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
         </div>
-        <h3>Visitors &amp; Outsiders</h3>
-        <p>Tell us about your overall impression, admissions experience, campus, or events.</p>
+        <h3>Campus operations</h3>
+        <p>Tell us about facilities, admissions, events, administration, or other topics.</p>
       </div>
     </div>
   </div>
@@ -126,8 +126,8 @@ include 'includes/header.php';
     <div class="steps">
       <div class="step">
         <div class="step-num">1</div>
-        <h4>Choose your role</h4>
-        <p>Tell us if you're a student, staff member, or visitor — the category list adjusts to match.</p>
+        <h4>Choose a topic</h4>
+        <p>Select the campus area your feedback is about.</p>
       </div>
       <div class="step">
         <div class="step-num">2</div>
