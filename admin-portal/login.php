@@ -20,19 +20,19 @@ $success = $_SESSION['login_notice'] ?? '';
 unset($_SESSION['login_notice']);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $username = trim($_POST['username'] ?? '');
+    $email = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
 
-    if ($username === '' || $password === '') {
-        $error = 'Please enter both your username and password.';
+    if ($email === '' || $password === '') {
+      $error = 'Please enter both your email and password.';
     } else {
-        $stmt = $pdo->prepare('SELECT id, username, password_hash FROM admin WHERE username = :u LIMIT 1');
-        $stmt->execute([':u' => $username]);
+      $stmt = $pdo->prepare('SELECT id, username, password_hash FROM admin WHERE LOWER(email) = LOWER(:email) LIMIT 1');
+      $stmt->execute([':email' => $email]);
         $admin = $stmt->fetch();
 
-        // Generic error message on failure — never reveal whether the username exists (Module 3).
+        // Keep authentication errors generic to avoid exposing account existence.
         if (!$admin || !password_verify($password, $admin['password_hash'])) {
-            $error = 'Invalid username or password.';
+          $error = 'Invalid email or password.';
         } else {
             session_regenerate_id(true);
             $_SESSION['admin_id']       = $admin['id'];
@@ -72,12 +72,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php if ($success): ?><div class="otp-success login-success" role="status"><span class="otp-check" aria-hidden="true">✓</span><span><?php echo htmlspecialchars($success, ENT_QUOTES, 'UTF-8'); ?></span></div><?php endif; ?>
         <?php if ($error): ?><div class="alert alert-error" role="alert"><?php echo htmlspecialchars($error); ?></div><?php endif; ?>
         <form method="POST" novalidate data-login-form>
-          <div class="field"><label for="username">Username</label><input type="text" id="username" name="username" autocomplete="username" value="<?php echo htmlspecialchars($_POST['username'] ?? ''); ?>" required autofocus></div>
+          <div class="field"><label for="email">Email address</label><input type="email" id="email" name="email" autocomplete="username" value="<?php echo htmlspecialchars($_POST['email'] ?? ''); ?>" required autofocus></div>
           <div class="field"><label for="password">Password</label><div class="login-password-input"><input type="password" id="password" name="password" autocomplete="current-password" required><button class="login-password-toggle" type="button" data-login-password-toggle aria-label="Show password"><svg class="eye-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.5"/></svg><svg class="eye-closed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 3 18 18"/><path d="M10.6 6.2A10.8 10.8 0 0 1 12 6c6.5 0 10 6 10 6a18 18 0 0 1-3.1 3.8M6.1 6.1C3.5 7.9 2 12 2 12s3.5 6 10 6c1.3 0 2.5-.2 3.5-.6"/><circle cx="12" cy="12" r="2.5"/></svg></button></div><a class="forgot-link" href="forgot_password.php">Forgot password?</a></div>
           <label class="remember-row"><input type="checkbox" name="remember" value="1"><span>Remember me on this device</span></label>
           <button type="submit" class="btn btn-primary btn-block login-submit"><span class="login-submit-content"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Sign In</span><span class="login-spinner" aria-hidden="true"></span></button>
         </form>
-        <p class="demo-hint">Demo credentials: <strong>admin</strong> / <strong>admin123</strong></p>
+        <p class="demo-hint">Demo credentials: <strong>admin@example.com</strong> / <strong>admin123</strong></p>
       </div>
     </section>
   </main>

@@ -16,6 +16,9 @@ if (!$row) {
     header('Location: dashboard.php');
     exit;
 }
+if ($row['is_anonymous']) {
+  $row['submitter_name'] = null;
+}
 
 function badgeClass($type) {
     return match ($type) {
@@ -59,9 +62,22 @@ include 'includes/header.php';
   </div>
 
   <div class="detail-block">
+    <label>Feedback title</label>
+    <div class="value"><?php echo htmlspecialchars($row['feedback_title'] ?: 'Not provided'); ?></div>
+  </div>
+
+  <div class="detail-block">
     <label>Category</label>
     <div class="value"><?php echo htmlspecialchars($row['category']); ?></div>
   </div>
+
+  <?php if ($row['submitter_type'] === 'Student'): ?>
+    <div class="detail-block"><label>Department / Faculty</label><div class="value"><?php echo htmlspecialchars($row['department_faculty'] ?: 'Not provided'); ?><?php if ($row['semester_year']): ?> · <?php echo htmlspecialchars($row['semester_year']); ?><?php endif; ?></div></div>
+  <?php elseif ($row['submitter_type'] === 'Teacher & Staff'): ?>
+    <div class="detail-block"><label>Staff department and role</label><div class="value"><?php echo htmlspecialchars(trim(($row['staff_department'] ?? '') . ' · ' . ($row['staff_role'] ?? ''), ' ·') ?: 'Not provided'); ?></div></div>
+  <?php endif; ?>
+
+  <?php if ($row['urgency_level']): ?><div class="detail-block"><label>Urgency</label><div class="value"><?php echo htmlspecialchars($row['urgency_level']); ?></div></div><?php endif; ?>
 
   <div class="detail-block status-control">
     <label for="feedbackStatus">Status</label>
@@ -80,16 +96,23 @@ include 'includes/header.php';
     <div class="value"><?php echo (int) $row['rating']; ?> out of 5 stars</div>
   </div>
 
+  <?php if ($row['overall_satisfaction']): ?><div class="detail-block"><label><?php echo $row['submitter_type'] === 'Teacher & Staff' ? 'Overall workplace satisfaction' : 'Overall satisfaction'; ?></label><div class="value"><?php echo (int) $row['overall_satisfaction']; ?> out of 5</div></div><?php endif; ?>
+
   <div class="detail-block">
     <label>Comment</label>
     <div class="value"><?php echo nl2br(htmlspecialchars($row['message'])); ?></div>
   </div>
 
+  <?php if ($row['preferred_solution']): ?><div class="detail-block"><label>Preferred solution</label><div class="value"><?php echo nl2br(htmlspecialchars($row['preferred_solution'])); ?></div></div><?php endif; ?>
+  <?php if ($row['suggested_improvements']): ?><div class="detail-block"><label>Suggested improvements</label><div class="value"><?php echo nl2br(htmlspecialchars($row['suggested_improvements'])); ?></div></div><?php endif; ?>
+  <div class="detail-block"><label>Response requested</label><div class="value"><?php echo !empty($row['follow_up_required']) ? 'Yes — use the contact details on the associated account where permitted.' : 'No'; ?></div></div>
+  <?php if (!empty($row['attachment_name'])): ?><div class="detail-block"><label>Attachment</label><div class="value"><a href="feedback_attachment.php?id=<?php echo (int) $row['id']; ?>"><?php echo htmlspecialchars($row['attachment_name']); ?></a></div></div><?php endif; ?>
+
   <div class="detail-block">
     <label>Anonymity</label>
     <div class="value">
       <?php echo $row['is_anonymous']
-        ? 'Submitted anonymously — no name was collected or stored.'
+        ? 'Identity is hidden in standard feedback details. Portal account links may be available to authorized database administrators for tracking.'
         : 'Submitted with name: ' . htmlspecialchars($row['submitter_name'] ?: '—'); ?>
     </div>
   </div>

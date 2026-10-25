@@ -11,13 +11,14 @@ USE college_feedback_system;
 CREATE TABLE IF NOT EXISTS admin (
     id            INT AUTO_INCREMENT PRIMARY KEY,
     username      VARCHAR(50)  NOT NULL UNIQUE,
+    email         VARCHAR(100) NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL
 ) ENGINE=InnoDB;
 
--- Default admin account: username "admin", password "admin123"
+-- Default admin account: email "admin@example.com", password "admin123"
 -- (password_hash generated with PHP's password_hash(), bcrypt)
-INSERT INTO admin (username, password_hash) VALUES
-('admin', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi')
+INSERT INTO admin (username, email, password_hash) VALUES
+('admin', 'admin@example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi')
 ON DUPLICATE KEY UPDATE username = username;
 
 -- 11.1 feedback table ----------------------------------------------------
@@ -27,8 +28,20 @@ CREATE TABLE IF NOT EXISTS feedback (
     submitter_type  ENUM('Student','Teacher & Staff','Visitor & Outsider','Public') NOT NULL,
     is_anonymous    TINYINT(1) NOT NULL DEFAULT 0,
     category        VARCHAR(100) NOT NULL,
+    feedback_title VARCHAR(200) NULL,
+    department_faculty VARCHAR(50) NULL,
+    semester_year   VARCHAR(40) NULL,
+    urgency_level   VARCHAR(12) NULL,
     rating          TINYINT NOT NULL CHECK (rating BETWEEN 1 AND 5),
+    overall_satisfaction TINYINT NULL CHECK (overall_satisfaction BETWEEN 1 AND 5),
     message         TEXT NOT NULL,
+    preferred_solution TEXT NULL,
+    follow_up_required TINYINT(1) NOT NULL DEFAULT 0,
+    staff_department VARCHAR(60) NULL,
+    staff_role      VARCHAR(60) NULL,
+    suggested_improvements TEXT NULL,
+    attachment_path VARCHAR(255) NULL,
+    attachment_name VARCHAR(255) NULL,
     submit_date     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_type (submitter_type),
     INDEX idx_category (category),

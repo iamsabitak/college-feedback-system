@@ -2,6 +2,7 @@
 require 'includes/auth.php';
 require 'includes/db.php';
 require 'includes/accounts.php';
+require __DIR__ . '/../portal_pagination.php';
 
 $tab = $_GET['tab'] ?? 'accounts';
 if (in_array($tab, ['students', 'staff'], true)) {
@@ -58,6 +59,14 @@ if ($tab === 'audit') {
     $offset = ($page - 1) * $perPage;
     $userRows = account_select_users($pdo, $userFilters, $perPage, $offset);
 }
+  $paginationQueryParams = ['tab' => $tab, 'search' => $search, 'date_from' => $dateFrom, 'date_to' => $dateTo];
+  if ($tab === 'audit') {
+    $paginationQueryParams['action'] = $auditFilters['action'];
+  } else {
+    $paginationQueryParams['category'] = $category;
+    $paginationQueryParams['status'] = $statusFilter;
+  }
+  $paginationQueryParams = array_filter($paginationQueryParams, static fn($value) => $value !== '');
 
 include 'includes/header.php';
 ?>
@@ -124,9 +133,9 @@ include 'includes/header.php';
       <a class="btn btn-outline" href="accounts_manage.php?tab=audit">Clear</a>
     </div>
   </form>
-  <div class="table-card">
-    <div class="table-wrap">
-      <table>
+  <div class="table-card list-table-card pagination-contained">
+    <div class="table-wrap list-table-wrap">
+      <table class="list-table">
         <thead>
           <tr>
             <th>Time</th>
@@ -153,28 +162,12 @@ include 'includes/header.php';
         </tbody>
       </table>
     </div>
-    <div class="table-toolbar" style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 18px; border-top:1px solid var(--line); flex-wrap:wrap;">
-      <div style="display:flex; gap:8px; align-items:center;">
-        <button class="icon-btn" type="button" aria-label="First page" data-page-nav="first" <?php echo $page <= 1 ? 'disabled' : ''; ?>>«</button>
-        <button class="icon-btn" type="button" aria-label="Previous page" data-page-nav="prev" <?php echo $page <= 1 ? 'disabled' : ''; ?>>‹</button>
-        <span>Page <?php echo (int) $page; ?> of <?php echo (int) $auditPages; ?></span>
-        <button class="icon-btn" type="button" aria-label="Next page" data-page-nav="next" <?php echo $page >= $auditPages ? 'disabled' : ''; ?>>›</button>
-        <button class="icon-btn" type="button" aria-label="Last page" data-page-nav="last" <?php echo $page >= $auditPages ? 'disabled' : ''; ?>>»</button>
-      </div>
-      <label style="display:flex; align-items:center; gap:8px; color:var(--ink-soft); font-size:12px;">
-        Rows per page
-        <select id="rows-per-page" style="min-width:80px;">
-          <option value="10" <?php echo $perPage === 10 ? 'selected' : ''; ?>>10</option>
-          <option value="20" <?php echo $perPage === 20 ? 'selected' : ''; ?>>20</option>
-          <option value="50" <?php echo $perPage === 50 ? 'selected' : ''; ?>>50</option>
-        </select>
-      </label>
-    </div>
+    <?php renderPortalPagination($auditTotal, $page, $auditPages, $perPage, [10, 20, 50], $paginationQueryParams); ?>
   </div>
 <?php else: ?>
-  <div class="table-card">
-    <div class="table-wrap">
-      <table>
+  <div class="table-card list-table-card pagination-contained">
+    <div class="table-wrap list-table-wrap">
+      <table class="list-table">
         <thead>
           <tr>
             <th>Name</th>
@@ -220,23 +213,7 @@ include 'includes/header.php';
         </tbody>
       </table>
     </div>
-    <div class="table-toolbar" style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 18px; border-top:1px solid var(--line); flex-wrap:wrap;">
-      <div style="display:flex; gap:8px; align-items:center;">
-        <button class="icon-btn" type="button" aria-label="First page" data-page-nav="first" <?php echo $page <= 1 ? 'disabled' : ''; ?>>«</button>
-        <button class="icon-btn" type="button" aria-label="Previous page" data-page-nav="prev" <?php echo $page <= 1 ? 'disabled' : ''; ?>>‹</button>
-        <span>Page <?php echo (int) $page; ?> of <?php echo (int) $userPages; ?></span>
-        <button class="icon-btn" type="button" aria-label="Next page" data-page-nav="next" <?php echo $page >= $userPages ? 'disabled' : ''; ?>>›</button>
-        <button class="icon-btn" type="button" aria-label="Last page" data-page-nav="last" <?php echo $page >= $userPages ? 'disabled' : ''; ?>>»</button>
-      </div>
-      <label style="display:flex; align-items:center; gap:8px; color:var(--ink-soft); font-size:12px;">
-        Rows per page
-        <select id="rows-per-page" style="min-width:80px;">
-          <option value="10" <?php echo $perPage === 10 ? 'selected' : ''; ?>>10</option>
-          <option value="20" <?php echo $perPage === 20 ? 'selected' : ''; ?>>20</option>
-          <option value="50" <?php echo $perPage === 50 ? 'selected' : ''; ?>>50</option>
-        </select>
-      </label>
-    </div>
+    <?php renderPortalPagination($userTotal, $page, $userPages, $perPage, [10, 20, 50], $paginationQueryParams); ?>
   </div>
 <?php endif; ?>
 

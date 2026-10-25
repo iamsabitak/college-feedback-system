@@ -6,6 +6,7 @@
  */
 require 'includes/auth.php';
 require 'includes/db.php';
+require __DIR__ . '/../portal_pagination.php';
 
 // feedback_list.php reuses this data view while keeping Dashboard overview-only.
 $isFeedbackList = !empty($feedbackListOnly);
@@ -108,7 +109,7 @@ $where  = [];
 $params = [];
 
 if ($search !== '') {
-  $where[] = '(message LIKE :q_message OR submitter_name LIKE :q_name OR category LIKE :q_category)';
+  $where[] = '(message LIKE :q_message OR (is_anonymous = 0 AND submitter_name LIKE :q_name) OR category LIKE :q_category)';
   $params[':q_message'] = '%' . $search . '%';
   $params[':q_name'] = '%' . $search . '%';
   $params[':q_category'] = '%' . $search . '%';
@@ -198,12 +199,6 @@ $paginationParams = array_filter([
   'date_to' => $dateTo,
 ], static fn($value) => $value !== '');
 $paginationParams['per_page'] = $perPage;
-$previousQuery = $paginationParams;
-$previousQuery['page'] = max(1, $page - 1);
-$nextQuery = $paginationParams;
-$nextQuery['page'] = min($totalPages, $page + 1);
-$firstResult = $totalResults ? $offset + 1 : 0;
-$lastResult = min($offset + $perPage, $totalResults);
 
 $pageTitle = $isFeedbackList ? 'Feedback List' : 'Dashboard';
 $active = $isFeedbackList ? 'feedback-list' : 'dashboard';
@@ -228,7 +223,14 @@ $submitterTotal = array_sum(array_map(static fn($row) => (int) $row['total'], $s
 $weeklyPeakDay = $weeklyTotal > 0 ? array_search(max($weeklyCounts), $weeklyCounts, true) : false;
 $weeklyToday = date('Y-m-d');
 $weeklyMax = max($weeklyCounts) ?: 1;
-$weeklyPoints = implode(' ', array_map(static fn($index, $count) => round(8 + ($index * 164 / 6), 1) . ',' . round(31 - ((int) $count / $weeklyMax * 23), 1), array_keys($weeklyCounts), array_values($weeklyCounts)));
+$weeklyCoordinates = [];
+foreach (array_values($weeklyCounts) as $index => $count) {
+  $x = 8 + ($index * 164 / 6);
+  $y = 31 - ((int) $count / $weeklyMax * 23);
+  $weeklyCoordinates[] = round($x, 1) . ',' . round($y, 1);
+}
+$weeklyPoints = implode(' ', $weeklyCoordinates);
+$weeklyPath = 'M' . str_replace(' ', ' L', $weeklyPoints);
 ?>
 
 <div class="page-head dashboard-page-head">
@@ -322,7 +324,7 @@ $weeklyPoints = implode(' ', array_map(static fn($index, $count) => round(8 + ($
       <svg class="weekly-sparkline" viewBox="0 0 180 50" role="img" aria-label="Daily feedback trend for the last seven days">
         <defs><linearGradient id="weeklyArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4a6b57" stop-opacity=".25"/><stop offset="1" stop-color="#4a6b57" stop-opacity="0"/></linearGradient></defs>
         <path class="weekly-area" d="M8 43 L<?php echo $weeklyPoints; ?> L172 43 Z"/>
-        <polyline class="weekly-line" points="<?php echo $weeklyPoints; ?>"/>
+        <path class="weekly-line" d="<?php echo $weeklyPath; ?>"/>
         <?php foreach (array_values($weeklyCounts) as $index => $count): $x = 8 + ($index * 164 / 6); $y = 31 - ((int) $count / $weeklyMax * 23); ?><circle class="weekly-point<?php echo $weeklyToday === array_keys($weeklyCounts)[$index] ? ' is-today' : ''; ?>" cx="<?php echo round($x, 1); ?>" cy="<?php echo round($y, 1); ?>" r="3"/><?php endforeach; ?>
       </svg>
       <div class="weekly-trend-value">
@@ -343,7 +345,7 @@ $weeklyPoints = implode(' ', array_map(static fn($index, $count) => round(8 + ($
       <?php if (empty($recentFeedback)): ?>
         <p class="widget-empty">No feedback has been submitted yet.</p>
       <?php else: foreach ($recentFeedback as $feedback): ?>
-        <button class="recent-feedback-item" type="button" data-feedback-view data-feedback-id="<?php echo (int) $feedback['id']; ?>" data-feedback-name="<?php echo htmlspecialchars($feedback['is_anonymous'] ? 'Anonymous Submission' : ($feedback['submitter_name'] ?: 'Unnamed'), ENT_QUOTES, 'UTF-8'); ?>" data-feedback-type="<?php echo htmlspecialchars($feedback['submitter_type'], ENT_QUOTES, 'UTF-8'); ?>" data-feedback-category="<?php echo htmlspecialchars($feedback['category'], ENT_QUOTES, 'UTF-8'); ?>" data-feedback-rating="<?php echo (int) $feedback['rating']; ?>" data-feedback-message="<?php echo htmlspecialchars($feedback['message'], ENT_QUOTES, 'UTF-8'); ?>" data-feedback-date="<?php echo htmlspecialchars(date('d M Y, g:i A', strtotime($feedback['submit_date'])), ENT_QUOTES, 'UTF-8'); ?>" data-feedback-anonymity="<?php echo htmlspecialchars($feedback['is_anonymous'] ? 'Submitted anonymously — no name was collected or stored.' : 'Submitted with name: ' . ($feedback['submitter_name'] ?: '—'), ENT_QUOTES, 'UTF-8'); ?>">
+        <button class="recent-feedback-item" type="button" data-feedback-view data-feedback-id="<?php echo (int) $feedback['id']; ?>" data-feedback-name="<?php echo htmlspecialchars($feedback['is_anonymous'] ? 'Anonymous Submission' : ($feedback['submitter_name'] ?: 'Unnamed'), ENT_QUOTES, 'UTF-8'); ?>" data-feedback-type="<?php echo htmlspecialchars($feedback['submitter_type'], ENT_QUOTES, 'UTF-8'); ?>" data-feedback-category="<?php echo htmlspecialchars($feedback['category'], ENT_QUOTES, 'UTF-8'); ?>" data-feedback-rating="<?php echo (int) $feedback['rating']; ?>" data-feedback-message="<?php echo htmlspecialchars($feedback['message'], ENT_QUOTES, 'UTF-8'); ?>" data-feedback-date="<?php echo htmlspecialchars(date('d M Y, g:i A', strtotime($feedback['submit_date'])), ENT_QUOTES, 'UTF-8'); ?>" data-feedback-anonymity="<?php echo htmlspecialchars($feedback['is_anonymous'] ? 'Anonymous. The name is hidden in standard feedback details.' : 'Submitted with name: ' . ($feedback['submitter_name'] ?: '—'), ENT_QUOTES, 'UTF-8'); ?>">
           <span class="activity-icon <?php echo (int) $feedback['rating'] >= 4 ? 'activity-success' : 'activity-warning'; ?>" aria-hidden="true"><?php echo (int) $feedback['rating']; ?></span>
           <span class="recent-feedback-copy"><strong><?php echo htmlspecialchars($feedback['is_anonymous'] ? 'Anonymous submission' : ($feedback['submitter_name'] ?: 'Unnamed submission')); ?></strong><small><?php echo htmlspecialchars($feedback['category']); ?> · <?php echo htmlspecialchars($feedback['submitter_type']); ?></small></span>
           <span class="rating-badge"><?php echo (int) $feedback['rating']; ?>★</span>
@@ -356,8 +358,10 @@ $weeklyPoints = implode(' ', array_map(static fn($index, $count) => round(8 + ($
     <div class="dashboard-panel-heading"><div><span class="chart-kicker">Workspace</span><h2 id="quickActionsTitle">Quick Actions</h2><p>Go directly to common tasks.</p></div></div>
     <div class="quick-actions-grid">
       <a class="quick-action" href="feedback_list.php"><span class="quick-action-icon" aria-hidden="true">≡</span><span><strong>Feedback List</strong><small>Review and manage submissions</small></span></a>
-      <a class="quick-action" href="../public-portal/index.php" target="_blank" rel="noopener noreferrer"><span class="quick-action-icon" aria-hidden="true">◎</span><span><strong>Public Portal</strong><small>Open the public feedback site</small></span></a>
-      <a class="quick-action" href="profile.php"><span class="quick-action-icon" aria-hidden="true">◇</span><span><strong>My Profile</strong><small>Update account details</small></span></a>
+      <a class="quick-action" href="status_reports.php"><span class="quick-action-icon" aria-hidden="true">▤</span><span><strong>Reports</strong><small>Review feedback reports</small></span></a>
+      <a class="quick-action" href="accounts_manage.php?tab=audit"><span class="quick-action-icon" aria-hidden="true">◷</span><span><strong>Audit Log</strong><small>Review account activity</small></span></a>
+      <a class="quick-action" href="accounts_manage.php?tab=accounts&amp;category=all"><span class="quick-action-icon" aria-hidden="true">♙</span><span><strong>Staff &amp; students</strong><small>Manage campus accounts</small></span></a>
+      <a class="quick-action" href="student_approvals.php"><span class="quick-action-icon" aria-hidden="true">✓</span><span><strong>Student Approvals</strong><small>Review pending access</small></span></a>
       <!-- <a class="quick-action" href="change_password.php"><span class="quick-action-icon" aria-hidden="true">⌁</span><span><strong>Change Password</strong><small>Update your login password</small></span></a> -->
     </div>
   </section>
@@ -404,9 +408,9 @@ $weeklyPoints = implode(' ', array_map(static fn($index, $count) => round(8 + ($
   </div>
 </div>
 
-<div class="table-card">
-  <div class="table-wrap">
-    <table>
+<div class="table-card list-table-card">
+  <div class="table-wrap list-table-wrap">
+    <table class="list-table">
       <thead>
         <tr>
           <th>Submitter</th>
@@ -453,7 +457,7 @@ $weeklyPoints = implode(' ', array_map(static fn($index, $count) => round(8 + ($
                         data-feedback-rating="<?php echo (int) $row['rating']; ?>"
                         data-feedback-message="<?php echo htmlspecialchars($row['message'], ENT_QUOTES, 'UTF-8'); ?>"
                         data-feedback-date="<?php echo htmlspecialchars(date('d M Y, g:i A', strtotime($row['submit_date'])), ENT_QUOTES, 'UTF-8'); ?>"
-                        data-feedback-anonymity="<?php echo htmlspecialchars($row['is_anonymous'] ? 'Submitted anonymously — no name was collected or stored.' : 'Submitted with name: ' . ($row['submitter_name'] ?: '—'), ENT_QUOTES, 'UTF-8'); ?>">
+                        data-feedback-anonymity="<?php echo htmlspecialchars($row['is_anonymous'] ? 'Anonymous. The name is hidden in standard feedback details.' : 'Submitted with name: ' . ($row['submitter_name'] ?: '—'), ENT_QUOTES, 'UTF-8'); ?>">
                   <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
                 </button>
                 <button type="button" class="icon-btn danger" title="Delete feedback" aria-label="Delete feedback"
@@ -470,22 +474,7 @@ $weeklyPoints = implode(' ', array_map(static fn($index, $count) => round(8 + ($
   </div>
 </div>
 
-<div class="pagination-bar">
-  <div class="pagination-left-group">
-    <p class="pagination-summary">Showing <?php echo $firstResult; ?> to <?php echo $lastResult; ?> of <?php echo $totalResults; ?> results</p>
-    <form method="GET" class="pagination-size-form">
-      <?php foreach ($paginationParams as $name => $value): if ($name !== 'per_page'): ?><input type="hidden" name="<?php echo htmlspecialchars($name, ENT_QUOTES, 'UTF-8'); ?>" value="<?php echo htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8'); ?>"><?php endif; endforeach; ?>
-      <input type="hidden" name="page" value="1">
-      <label for="per_page">Rows per page:</label>
-      <select id="per_page" name="per_page" data-page-size><?php foreach ($allowedPageSizes as $size): ?><option value="<?php echo $size; ?>" <?php echo $perPage === $size ? 'selected' : ''; ?>><?php echo $size; ?></option><?php endforeach; ?></select>
-    </form>
-  </div>
-  <nav class="pagination-nav" aria-label="Feedback pages">
-    <?php if ($page == 1): ?><span class="pagination-page-btn" aria-disabled="true"><svg aria-hidden="true" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3 4 8l4 5M12 3 8 8l4 5"/></svg></span><span class="pagination-page-btn" aria-disabled="true"><svg aria-hidden="true" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m10 3-5 5 5 5"/></svg></span><?php else: ?><a class="pagination-page-btn" href="?<?php echo htmlspecialchars(http_build_query(array_merge($paginationParams, ['page' => 1])), ENT_QUOTES, 'UTF-8'); ?>" aria-label="First page"><svg aria-hidden="true" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3 4 8l4 5M12 3 8 8l4 5"/></svg></a><a class="pagination-page-btn" href="?<?php echo htmlspecialchars(http_build_query($previousQuery), ENT_QUOTES, 'UTF-8'); ?>" rel="prev" aria-label="Previous page"><svg aria-hidden="true" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m10 3-5 5 5 5"/></svg></a><?php endif; ?>
-    <span class="pagination-page-label">Page <?php echo $page; ?> of <?php echo $totalPages; ?></span>
-    <?php if ($page == $totalPages): ?><span class="pagination-page-btn" aria-disabled="true"><svg aria-hidden="true" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m6 3 5 5-5 5"/></svg></span><span class="pagination-page-btn" aria-disabled="true"><svg aria-hidden="true" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3l4 5-4 5M4 3l4 5-4 5"/></svg></span><?php else: ?><a class="pagination-page-btn" href="?<?php echo htmlspecialchars(http_build_query($nextQuery), ENT_QUOTES, 'UTF-8'); ?>" rel="next" aria-label="Next page"><svg aria-hidden="true" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m6 3 5 5-5 5"/></svg></a><a class="pagination-page-btn" href="?<?php echo htmlspecialchars(http_build_query(array_merge($paginationParams, ['page' => $totalPages])), ENT_QUOTES, 'UTF-8'); ?>" aria-label="Last page"><svg aria-hidden="true" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3l4 5-4 5M4 3l4 5-4 5"/></svg></a><?php endif; ?>
-  </nav>
-</div>
+<?php renderPortalPagination($totalResults, $page, $totalPages, $perPage, $allowedPageSizes, $paginationParams); ?>
 
 <!-- Feedback detail modal -->
 <div class="modal-overlay" id="feedbackModal" role="dialog" aria-modal="true" aria-labelledby="feedbackModalTitle">
@@ -499,6 +488,22 @@ $weeklyPoints = implode(' ', array_map(static fn($index, $count) => round(8 + ($
       <button type="button" class="modal-close" aria-label="Close feedback details" data-feedback-modal-close>&times;</button>
     </div>
     <div class="detail-block">
+      <label>Feedback title</label>
+      <div class="value" id="feedbackModalFeedbackTitle"></div>
+    </div>
+    <div class="detail-block" id="feedbackModalProgramBlock" hidden>
+      <label>Department / Faculty</label>
+      <div class="value" id="feedbackModalProgram"></div>
+    </div>
+    <div class="detail-block" id="feedbackModalStaffBlock" hidden>
+      <label>Staff department and role</label>
+      <div class="value" id="feedbackModalStaffDetails"></div>
+    </div>
+    <div class="detail-block" id="feedbackModalUrgencyBlock" hidden>
+      <label>Urgency</label>
+      <div class="value" id="feedbackModalUrgency"></div>
+    </div>
+    <div class="detail-block">
       <label>Category</label>
       <div class="value" id="feedbackModalCategory"></div>
     </div>
@@ -509,6 +514,26 @@ $weeklyPoints = implode(' ', array_map(static fn($index, $count) => round(8 + ($
     <div class="detail-block">
       <label>Comment</label>
       <div class="value feedback-message" id="feedbackModalMessage"></div>
+    </div>
+    <div class="detail-block">
+      <label id="feedbackModalSatisfactionLabel">Overall satisfaction</label>
+      <div class="value" id="feedbackModalSatisfaction"></div>
+    </div>
+    <div class="detail-block">
+      <label>Response requested</label>
+      <div class="value" id="feedbackModalFollowUp"></div>
+    </div>
+    <div class="detail-block" id="feedbackModalSolutionBlock" hidden>
+      <label>Preferred solution</label>
+      <div class="value" id="feedbackModalSolution"></div>
+    </div>
+    <div class="detail-block" id="feedbackModalImprovementsBlock" hidden>
+      <label>Suggested improvements</label>
+      <div class="value" id="feedbackModalImprovements"></div>
+    </div>
+    <div class="detail-block" id="feedbackModalAttachmentBlock" hidden>
+      <label>Attachment</label>
+      <div class="value"><a id="feedbackModalAttachment" href="#"></a></div>
     </div>
     <div class="detail-block">
       <label>Anonymity</label>

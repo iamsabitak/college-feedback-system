@@ -771,8 +771,9 @@ document.addEventListener('DOMContentLoaded', function () {
       document.getElementById('feedbackModalCategory').textContent = entry.category;
       document.getElementById('feedbackModalRating').textContent = '★'.repeat(rating) + '☆'.repeat(5 - rating) + '  ' + rating + ' out of 5 stars';
       document.getElementById('feedbackModalMessage').textContent = entry.message || '';
+      clearFeedbackModalExtensions();
       document.getElementById('feedbackModalAnonymity').textContent = entry.is_anonymous
-        ? 'Submitted anonymously — no name was collected or stored.'
+        ? 'Anonymous. The name is hidden in standard feedback details.'
         : 'Submitted with name: ' + (entry.submitter_name || '—');
       detailModal.classList.add('open');
       const closeButton = detailModal.querySelector('[data-feedback-modal-close]');
@@ -973,8 +974,43 @@ document.addEventListener('DOMContentLoaded', function () {
     category: document.getElementById('feedbackModalCategory'),
     rating: document.getElementById('feedbackModalRating'),
     message: document.getElementById('feedbackModalMessage'),
-    anonymity: document.getElementById('feedbackModalAnonymity')
+    anonymity: document.getElementById('feedbackModalAnonymity'),
+    feedbackTitle: document.getElementById('feedbackModalFeedbackTitle'),
+    programBlock: document.getElementById('feedbackModalProgramBlock'),
+    program: document.getElementById('feedbackModalProgram'),
+    staffBlock: document.getElementById('feedbackModalStaffBlock'),
+    staffDetails: document.getElementById('feedbackModalStaffDetails'),
+    urgencyBlock: document.getElementById('feedbackModalUrgencyBlock'),
+    urgency: document.getElementById('feedbackModalUrgency'),
+    satisfactionLabel: document.getElementById('feedbackModalSatisfactionLabel'),
+    satisfaction: document.getElementById('feedbackModalSatisfaction'),
+    followUp: document.getElementById('feedbackModalFollowUp'),
+    solutionBlock: document.getElementById('feedbackModalSolutionBlock'),
+    solution: document.getElementById('feedbackModalSolution'),
+    improvementsBlock: document.getElementById('feedbackModalImprovementsBlock'),
+    improvements: document.getElementById('feedbackModalImprovements'),
+    attachmentBlock: document.getElementById('feedbackModalAttachmentBlock'),
+    attachment: document.getElementById('feedbackModalAttachment')
   };
+  function clearFeedbackModalExtensions() {
+    feedbackFields.satisfactionLabel.textContent = 'Overall satisfaction';
+    feedbackFields.feedbackTitle.textContent = '';
+    feedbackFields.programBlock.hidden = true;
+    feedbackFields.program.textContent = '';
+    feedbackFields.staffBlock.hidden = true;
+    feedbackFields.staffDetails.textContent = '';
+    feedbackFields.urgencyBlock.hidden = true;
+    feedbackFields.urgency.textContent = '';
+    feedbackFields.satisfaction.textContent = '';
+    feedbackFields.followUp.textContent = '';
+    feedbackFields.solutionBlock.hidden = true;
+    feedbackFields.solution.textContent = '';
+    feedbackFields.improvementsBlock.hidden = true;
+    feedbackFields.improvements.textContent = '';
+    feedbackFields.attachmentBlock.hidden = true;
+    feedbackFields.attachment.removeAttribute('href');
+    feedbackFields.attachment.textContent = '';
+  }
   function applyFeedbackModalEntry(entry) {
     const anonymous = document.getElementById('feedbackModalAnonymous');
     const status = document.getElementById('feedbackModalStatus');
@@ -989,7 +1025,33 @@ document.addEventListener('DOMContentLoaded', function () {
     feedbackFields.category.textContent = entry.category;
     feedbackFields.rating.textContent = '★'.repeat(rating) + '☆'.repeat(5 - rating) + '  ' + rating + ' out of 5 stars';
     feedbackFields.message.textContent = entry.message || '';
-    feedbackFields.anonymity.textContent = entry.is_anonymous ? 'Submitted anonymously — no name was collected or stored.' : 'Submitted with name: ' + (entry.submitter_name || '—');
+    clearFeedbackModalExtensions();
+    feedbackFields.anonymity.textContent = entry.is_anonymous
+      ? (entry.account_linked ? 'Anonymous. Your name is hidden in standard feedback details; this portal entry remains linked to an account for tracking.' : 'Anonymous. No submitter name is shown in standard feedback details.')
+      : 'Submitted with name: ' + (entry.submitter_name || '—');
+    feedbackFields.feedbackTitle.textContent = entry.feedback_title || 'Not provided';
+    feedbackFields.programBlock.hidden = !entry.department_faculty;
+    feedbackFields.program.textContent = entry.department_faculty ? entry.department_faculty + (entry.semester_year ? ' · ' + entry.semester_year : '') : '';
+    feedbackFields.staffBlock.hidden = !entry.staff_department && !entry.staff_role;
+    feedbackFields.staffDetails.textContent = [entry.staff_department, entry.staff_role].filter(Boolean).join(' · ');
+    feedbackFields.urgencyBlock.hidden = !entry.urgency_level;
+    feedbackFields.urgency.textContent = entry.urgency_level || '';
+    const overallSatisfaction = Number(entry.overall_satisfaction) || 0;
+    feedbackFields.satisfactionLabel.textContent = entry.submitter_type === 'Teacher & Staff' ? 'Overall workplace satisfaction' : 'Overall satisfaction';
+    feedbackFields.satisfaction.textContent = overallSatisfaction ? overallSatisfaction + ' out of 5' : 'Not provided';
+    feedbackFields.followUp.textContent = Number(entry.follow_up_required) === 1 ? 'Yes — response requested using account contact details where permitted.' : 'No';
+    feedbackFields.solutionBlock.hidden = !entry.preferred_solution;
+    feedbackFields.solution.textContent = entry.preferred_solution || '';
+    feedbackFields.improvementsBlock.hidden = !entry.suggested_improvements;
+    feedbackFields.improvements.textContent = entry.suggested_improvements || '';
+    feedbackFields.attachmentBlock.hidden = !entry.attachment_url;
+    if (entry.attachment_url) {
+      feedbackFields.attachment.href = entry.attachment_url;
+      feedbackFields.attachment.textContent = entry.attachment_name || 'Download attachment';
+    } else {
+      feedbackFields.attachment.removeAttribute('href');
+      feedbackFields.attachment.textContent = '';
+    }
     if (anonymous) anonymous.hidden = !entry.is_anonymous;
     if (status) { status.textContent = entry.status || 'New'; status.className = 'badge badge-' + String(entry.status || 'New').toLowerCase(); }
     if (statusSelect) statusSelect.value = entry.status || 'New';
@@ -1022,6 +1084,7 @@ document.addEventListener('DOMContentLoaded', function () {
       feedbackFields.category.textContent = btn.dataset.feedbackCategory;
       feedbackFields.rating.textContent = '★'.repeat(rating) + '☆'.repeat(5 - rating) + '  ' + rating + ' out of 5 stars';
       feedbackFields.message.textContent = btn.dataset.feedbackMessage;
+      clearFeedbackModalExtensions();
       feedbackFields.anonymity.textContent = btn.dataset.feedbackAnonymity;
       feedbackModal.dataset.feedbackId = String(btn.dataset.feedbackId);
       feedbackModal.classList.add('open');

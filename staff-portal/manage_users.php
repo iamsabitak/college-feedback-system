@@ -2,6 +2,9 @@
 require __DIR__ . '/includes/auth.php';
 require __DIR__ . '/includes/db.php';
 
+$sidebarStaffStmt = $pdo->prepare('SELECT username, full_name, email FROM portal_users WHERE id = :id AND role = \'staff\' LIMIT 1');
+$sidebarStaffStmt->execute([':id' => (int) $_SESSION['staff_id']]);
+$sidebarStaffUser = $sidebarStaffStmt->fetch() ?: ['username' => $_SESSION['staff_username'] ?? 'staff', 'full_name' => $_SESSION['staff_name'] ?? 'Staff Member', 'email' => ''];
 $message = '';
 $error = '';
 $csrfToken = $_SESSION['staff_student_csrf'] ?? bin2hex(random_bytes(32));
@@ -73,13 +76,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $error === '') {
         ':password_hash' => $hash,
       ]);
       $pdo->commit();
-      $message = 'Student identity sent to the administrator for approval. Login is enabled after approval.';
+      $message = 'Student account sent for administrator approval. The student can sign in after approval.';
     } catch (Throwable $e) {
       if ($pdo->inTransaction()) {
         $pdo->rollBack();
       }
       error_log('Staff-created student account failed: ' . $e->getMessage());
-      $error = 'Unable to create the student identity. Check that the details are unique and try again.';
+      $error = 'Unable to create the student account. Check that the details are unique and try again.';
         }
     }
     }
@@ -94,55 +97,60 @@ $usersStmt = $pdo->query(
    ORDER BY pu.full_name'
 );
 $users = $usersStmt->fetchAll();
+$studentCount = count($users);
+$pendingApprovalCount = count(array_filter($users, static function ($user) {
+  return ($user['approval_status'] ?? 'approved') === 'pending';
+}));
+$approvedStudentCount = count(array_filter($users, static function ($user) {
+  return ($user['approval_status'] ?? 'approved') === 'approved';
+}));
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Staff User Management</title>
+  <title>Create Student Accounts | Staff Portal</title>
+  <link rel="icon" type="image/svg+xml" href="../assets/logo.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Newsreader:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/staff.css">
+  <link rel="stylesheet" href="../portal_sidebar.css">
+  <link rel="stylesheet" href="../list_ui.css">
 </head>
 <body class="dashboard-body">
-  <aside class="dashboard-sidebar">
-    <div class="sidebar-brand">
-      <span class="brand-mark"><img src="../assets/logo.svg" alt=""></span>
-      <div>
-        <strong>Staff Portal</strong>
-        <small>Patan Nistha Campus</small>
-      </div>
-    </div>
-
-    <nav class="sidebar-nav">
-      <a href="dashboard.php">Dashboard</a>
-      <a class="active" href="manage_users.php">Manage users</a>
-      <a href="logout.php">Log out</a>
-    </nav>
-  </aside>
+  <?php
+  $portalSidebarRole = 'Staff';
+  $portalSidebarUser = $sidebarStaffUser;
+  $portalActiveSection = 'manage-students';
+  $portalCurrentPage = 'manage-users';
+  $portalCanManageStudents = true;
+  include __DIR__ . '/../portal_sidebar.php';
+  ?>
 
   <main class="dashboard-main">
     <header class="dashboard-header">
       <div>
-        <span class="page-kicker">User accounts</span>
-        <h1>Account management</h1>
+        <span class="page-kicker">Staff tools</span>
+        <h1>Create Student Accounts</h1>
       </div>
+      <div class="user-chip"><?php echo htmlspecialchars($sidebarStaffUser['username'] ?? 'staff', ENT_QUOTES, 'UTF-8'); ?></div>
     </header>
 
-    <section class="content-card lower-space">
-      <div class="card-header">
-        <h2>Student identities</h2>
+    <section class="content-card manage-users-intro lower-space">
+      <div class="manage-users-intro-copy">
+        <span class="page-kicker">Student access</span>
+        <h2>Register a student</h2>
+        <p>Create a portal account and send it for administrator approval. Students can sign in after approval.</p>
       </div>
       <?php if ($message): ?><div class="alert alert-success"><?php echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
       <?php if ($error): ?><div class="alert alert-error"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
-      <p>New student identities require administrator approval before the student can sign in.</p>
-      <button type="button" class="btn btn-primary" data-open-student-dialog>Create student identity</button>
+      <div class="manage-users-actions"><div class="account-summary-grid"><div><span>Total students</span><strong><?php echo $studentCount; ?></strong></div><div><span>Awaiting approval</span><strong><?php echo $pendingApprovalCount; ?></strong></div><div><span>Approved</span><strong><?php echo $approvedStudentCount; ?></strong></div></div><button type="button" class="btn btn-primary" data-open-student-dialog>Create student account</button></div>
     </section>
 
     <dialog class="student-identity-dialog" id="studentIdentityDialog" aria-labelledby="studentIdentityTitle">
       <div class="dialog-heading">
-        <div><span class="page-kicker">Staff action</span><h2 id="studentIdentityTitle">Create student identity</h2><p>Admin approval is required before the student can sign in.</p></div>
+        <div><span class="page-kicker">Student access</span><h2 id="studentIdentityTitle">Create student account</h2><p>The account will be sent for administrator approval.</p></div>
         <button type="button" class="dialog-close" data-close-student-dialog aria-label="Close dialog">&times;</button>
       </div>
       <form method="POST" class="submission-form two-column-form">
@@ -169,17 +177,17 @@ $users = $usersStmt->fetchAll();
         </div>
         <div class="dialog-actions">
           <button type="button" class="btn btn-outline" data-close-student-dialog>Cancel</button>
-          <button type="submit" class="btn btn-primary">Send for approval</button>
+          <button type="submit" class="btn btn-primary">Create and send for approval</button>
         </div>
       </form>
     </dialog>
 
     <section class="content-card">
-      <div class="card-header">
-        <h2>Current users</h2>
-      </div>
-      <div class="table-wrap">
-        <table>
+      <div class="student-table-heading"><div><span class="page-kicker">Directory</span><h2>Student accounts</h2></div><label class="student-search"><span class="sr-only">Search student accounts</span><input type="search" placeholder="Search students" data-student-filter></label></div>
+    </section>
+    <div class="list-table-card pagination-contained">
+      <div class="table-wrap list-table-wrap">
+        <table class="data-table list-table">
           <thead>
             <tr>
               <th>Student ID</th>
@@ -191,7 +199,7 @@ $users = $usersStmt->fetchAll();
           </thead>
           <tbody>
             <?php foreach ($users as $user): ?>
-              <tr>
+              <tr data-student-row>
                 <td><?php echo htmlspecialchars((string) ($user['student_id'] ?? '-'), ENT_QUOTES, 'UTF-8'); ?></td>
                 <td><?php echo htmlspecialchars($user['full_name'], ENT_QUOTES, 'UTF-8'); ?></td>
                 <td><?php echo htmlspecialchars($user['username'], ENT_QUOTES, 'UTF-8'); ?></td>
@@ -202,7 +210,20 @@ $users = $usersStmt->fetchAll();
           </tbody>
         </table>
       </div>
-    </section>
+      <div class="pagination-bar" data-student-pagination>
+        <div class="pagination-left-group">
+          <p class="pagination-summary" data-student-pagination-summary></p>
+          <label class="pagination-size-form"><span>Rows per page:</span><select data-student-page-size><option value="10">10</option><option value="20">20</option><option value="50">50</option></select></label>
+        </div>
+        <nav class="pagination-nav" aria-label="Student account pages">
+          <button class="pagination-page-btn" type="button" data-student-page-nav="first" aria-label="First page"><svg aria-hidden="true" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3 4 8l4 5M12 3 8 8l4 5"/></svg></button>
+          <button class="pagination-page-btn" type="button" data-student-page-nav="prev" aria-label="Previous page"><svg aria-hidden="true" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m10 3-5 5 5 5"/></svg></button>
+          <span class="pagination-page-label" data-student-pagination-page></span>
+          <button class="pagination-page-btn" type="button" data-student-page-nav="next" aria-label="Next page"><svg aria-hidden="true" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m6 3 5 5-5 5"/></svg></button>
+          <button class="pagination-page-btn" type="button" data-student-page-nav="last" aria-label="Last page"><svg aria-hidden="true" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3l4 5-4 5M4 3l4 5-4 5"/></svg></button>
+        </nav>
+      </div>
+    </div>
   </main>
 <script>
 const studentIdentityDialog = document.getElementById('studentIdentityDialog');
@@ -213,6 +234,44 @@ document.querySelectorAll('[data-close-student-dialog]').forEach((button) => {
 studentIdentityDialog?.addEventListener('click', (event) => {
   if (event.target === studentIdentityDialog) studentIdentityDialog.close();
 });
+const studentFilter = document.querySelector('[data-student-filter]');
+const studentRows = Array.from(document.querySelectorAll('[data-student-row]'));
+const studentPageSize = document.querySelector('[data-student-page-size]');
+const studentPageSummary = document.querySelector('[data-student-pagination-summary]');
+const studentPageLabel = document.querySelector('[data-student-pagination-page]');
+const studentPageButtons = Array.from(document.querySelectorAll('[data-student-page-nav]'));
+let studentCurrentPage = 1;
+let studentRowsPerPage = Number(studentPageSize?.value || 10);
+
+function renderStudentAccounts() {
+  const query = studentFilter?.value.trim().toLowerCase() || '';
+  const filteredRows = studentRows.filter((row) => row.textContent.toLowerCase().includes(query));
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / studentRowsPerPage));
+  studentCurrentPage = Math.min(studentCurrentPage, totalPages);
+  const firstVisible = filteredRows.length ? (studentCurrentPage - 1) * studentRowsPerPage : 0;
+  const lastVisible = Math.min(firstVisible + studentRowsPerPage, filteredRows.length);
+  studentRows.forEach((row) => { row.hidden = true; });
+  filteredRows.slice(firstVisible, lastVisible).forEach((row) => { row.hidden = false; });
+  if (studentPageSummary) studentPageSummary.textContent = `Showing ${filteredRows.length ? firstVisible + 1 : 0} to ${lastVisible} of ${filteredRows.length} results`;
+  if (studentPageLabel) studentPageLabel.textContent = `Page ${studentCurrentPage} of ${totalPages}`;
+  studentPageButtons.forEach((button) => {
+    const nav = button.dataset.studentPageNav;
+    button.disabled = (nav === 'first' || nav === 'prev') ? studentCurrentPage === 1 : studentCurrentPage === totalPages;
+  });
+}
+
+studentFilter?.addEventListener('input', () => { studentCurrentPage = 1; renderStudentAccounts(); });
+studentPageSize?.addEventListener('change', () => { studentRowsPerPage = Number(studentPageSize.value); studentCurrentPage = 1; renderStudentAccounts(); });
+studentPageButtons.forEach((button) => button.addEventListener('click', () => {
+  const query = studentFilter?.value.trim().toLowerCase() || '';
+  const totalPages = Math.max(1, Math.ceil(studentRows.filter((row) => row.textContent.toLowerCase().includes(query)).length / studentRowsPerPage));
+  if (button.dataset.studentPageNav === 'first') studentCurrentPage = 1;
+  if (button.dataset.studentPageNav === 'prev') studentCurrentPage = Math.max(1, studentCurrentPage - 1);
+  if (button.dataset.studentPageNav === 'next') studentCurrentPage = Math.min(totalPages, studentCurrentPage + 1);
+  if (button.dataset.studentPageNav === 'last') studentCurrentPage = totalPages;
+  renderStudentAccounts();
+}));
+renderStudentAccounts();
 <?php if ($error): ?>
 studentIdentityDialog?.showModal();
 <?php endif; ?>

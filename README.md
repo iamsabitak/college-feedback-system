@@ -19,6 +19,7 @@ college-feedback-system/
 │   ├── migration_notifications.sql← Admin notification read state
 │   ├── migration_users.sql        ← Student/staff user table and account audit model
 │   ├── migration_status_log.sql   ← Feedback status log / audit history
+│   ├── migration_portal_feedback_fields.sql ← Student/staff feedback fields and attachments
 │   └── college_feedback.sql      ← Legacy schema dump for reference
 ├── composer.json       ← PHPMailer dependency
 ├── index.php           ← Portal landing page with Public, Student, and Staff/Admin entry points
@@ -49,6 +50,7 @@ The project now spans public, student, staff, and admin portal flows while leavi
    mysql -u root -proot < database/migration_student_approvals.sql
    mysql -u root -proot < database/migration_public_feedback_type.sql
    mysql -u root -proot < database/migration_status_log.sql
+   mysql -u root -proot < database/migration_portal_feedback_fields.sql
    ```
 5. Visit:
    - Public portal: `http://localhost/college-feedback-system/public-portal/`
@@ -143,9 +145,13 @@ details include the submitter name only for non-anonymous feedback; anonymous pa
 contain that field. Start the same PHP/Apache server used for the portals; no separate notification
 process is needed.
 
+Student and staff feedback attachments are limited to 5 MB and stored outside the web root in the
+system temporary directory by default. Set `COLLEGE_FEEDBACK_UPLOAD_DIR` to a persistent private
+directory in deployments that need attachments to survive temporary-directory cleanup.
+
 ## Default admin login
 
-- **Username:** `admin`
+- **Email:** `admin@example.com`
 - **Password:** `admin123`
 
 > Local demo database credentials are intentionally `root` / `root` for the XAMPP setup. These credentials are for local-only development and should not be used in a shared or production environment.

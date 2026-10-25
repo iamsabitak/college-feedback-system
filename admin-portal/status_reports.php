@@ -1,6 +1,7 @@
 <?php
 require 'includes/auth.php';
 require 'includes/db.php';
+require __DIR__ . '/../portal_pagination.php';
 
 $pageTitle = 'Status Reports';
 $active = 'status-reports';
@@ -16,12 +17,16 @@ if (!in_array($status, $allowedStatuses, true)) {
   $status = '';
 }
 
-$perPage = 10;
+$allowedPageSizes = [10, 20, 50];
+$perPage = isset($_GET['per_page']) ? (int) $_GET['per_page'] : 10;
+if (!in_array($perPage, $allowedPageSizes, true)) {
+  $perPage = 10;
+}
 $page = max(1, (int) ($_GET['page'] ?? 1));
 $searchSql = <<<'SQL'
   SELECT f.id, 'Public feedback' AS source, 'public' AS source_key,
        f.submit_date AS created_at,
-       COALESCE(NULLIF(f.submitter_name, ''), 'Anonymous') AS submitted_by,
+      CASE WHEN f.is_anonymous = 1 THEN 'Anonymous' ELSE COALESCE(NULLIF(f.submitter_name, ''), 'Unnamed') END AS submitted_by,
       'Public' AS audience, f.category, f.message AS description,
        f.status, f.rating
   FROM feedback f
@@ -133,9 +138,15 @@ include 'includes/header.php';
   </div>
 </form>
 
-<div class="table-card">
-  <div class="table-wrap">
-    <table>
+<section class="report-summary-grid" aria-label="Filtered report totals">
+  <article class="report-summary-card"><span>Filtered submissions</span><strong><?php echo $total; ?></strong></article>
+  <article class="report-summary-card"><span>Resolved</span><strong><?php echo (int) ($summary['resolved'] ?? 0); ?></strong></article>
+  <article class="report-summary-card"><span>Can still be resolved</span><strong><?php echo (int) ($summary['actionable'] ?? 0); ?></strong></article>
+</section>
+
+<div class="table-card list-table-card pagination-contained">
+  <div class="table-wrap list-table-wrap">
+    <table class="list-table">
       <thead>
         <tr>
           <th>Date</th>
@@ -167,36 +178,9 @@ include 'includes/header.php';
           <?php endforeach; ?>
         <?php endif; ?>
       </tbody>
-      <tfoot>
-        <tr>
-          <td colspan="8" style="padding:14px 18px; border-top:2px solid var(--line); color:var(--ink-soft); font-size:12.5px;">
-            Filtered submissions: <strong><?php echo $total; ?></strong>
-            <span style="margin-left:16px;">Resolved: <strong><?php echo (int) ($summary['resolved'] ?? 0); ?></strong></span>
-            <span style="margin-left:16px;">Can still be resolved: <strong><?php echo (int) ($summary['actionable'] ?? 0); ?></strong></span>
-          </td>
-        </tr>
-      </tfoot>
     </table>
   </div>
-  <div class="table-toolbar" style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 18px; border-top:1px solid var(--line); flex-wrap:wrap;">
-    <span>Page <?php echo $page; ?> of <?php echo $pages; ?> · 10 rows per page</span>
-    <div style="display:flex; gap:8px; align-items:center;">
-      <button class="icon-btn" type="button" aria-label="First page" data-report-page="1" <?php echo $page <= 1 ? 'disabled' : ''; ?>>«</button>
-      <button class="icon-btn" type="button" aria-label="Previous page" data-report-page="<?php echo max(1, $page - 1); ?>" <?php echo $page <= 1 ? 'disabled' : ''; ?>>‹</button>
-      <button class="icon-btn" type="button" aria-label="Next page" data-report-page="<?php echo min($pages, $page + 1); ?>" <?php echo $page >= $pages ? 'disabled' : ''; ?>>›</button>
-      <button class="icon-btn" type="button" aria-label="Last page" data-report-page="<?php echo $pages; ?>" <?php echo $page >= $pages ? 'disabled' : ''; ?>>»</button>
-    </div>
-  </div>
+  <?php renderPortalPagination($total, $page, $pages, $perPage, $allowedPageSizes, ['search' => $search, 'source' => $source, 'status' => $status]); ?>
 </div>
-
-<script>
-document.querySelectorAll('[data-report-page]').forEach((button) => {
-  button.addEventListener('click', () => {
-    const url = new URL(window.location.href);
-    url.searchParams.set('page', button.dataset.reportPage);
-    window.location.href = url.toString();
-  });
-});
-</script>
 
 <?php include 'includes/footer.php'; ?>
