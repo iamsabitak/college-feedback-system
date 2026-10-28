@@ -6,7 +6,7 @@
  */
 /**
  * Database connection for the Admin Portal.
- * Same database as the public portal (Section 11: one shared MySQL database).
+ * Shared database for the student, staff, and administrator portals.
  */
 
 $DB_HOST = 'localhost';

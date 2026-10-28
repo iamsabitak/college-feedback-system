@@ -8,7 +8,7 @@ $active = 'status-reports';
 $search = trim((string) ($_GET['search'] ?? ''));
 $source = trim((string) ($_GET['source'] ?? ''));
 $status = trim((string) ($_GET['status'] ?? ''));
-$allowedSources = ['public', 'portal'];
+$allowedSources = ['feedback', 'portal'];
 $allowedStatuses = ['New', 'Reviewed', 'Resolved'];
 if (!in_array($source, $allowedSources, true)) {
   $source = '';
@@ -24,10 +24,10 @@ if (!in_array($perPage, $allowedPageSizes, true)) {
 }
 $page = max(1, (int) ($_GET['page'] ?? 1));
 $searchSql = <<<'SQL'
-  SELECT f.id, 'Public feedback' AS source, 'public' AS source_key,
+  SELECT f.id, 'Feedback' AS source, 'feedback' AS source_key,
        f.submit_date AS created_at,
       CASE WHEN f.is_anonymous = 1 THEN 'Anonymous' ELSE COALESCE(NULLIF(f.submitter_name, ''), 'Unnamed') END AS submitted_by,
-      'Public' AS audience, f.category, f.message AS description,
+      f.submitter_type AS audience, f.category, f.message AS description,
        f.status, f.rating
   FROM feedback f
   UNION ALL
@@ -106,7 +106,7 @@ include 'includes/header.php';
   <div>
     <span class="page-kicker">Administration</span>
     <h1>Status review reports</h1>
-    <p>Review public feedback and student/staff submissions together, including resolved and actionable totals.</p>
+    <p>Review student and staff submissions, including resolved and actionable totals.</p>
   </div>
 </section>
 
@@ -119,7 +119,7 @@ include 'includes/header.php';
     <label for="report-source">Source</label>
     <select id="report-source" name="source">
       <option value="">All submissions</option>
-      <option value="public" <?php echo $source === 'public' ? 'selected' : ''; ?>>Public feedback</option>
+      <option value="feedback" <?php echo $source === 'feedback' ? 'selected' : ''; ?>>Feedback</option>
       <option value="portal" <?php echo $source === 'portal' ? 'selected' : ''; ?>>Student/staff portal</option>
     </select>
   </div>

@@ -53,7 +53,7 @@ DROP TABLE IF EXISTS `feedback`;
 CREATE TABLE `feedback` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `submitter_name` varchar(100) DEFAULT NULL,
-  `submitter_type` enum('Student','Teacher & Staff','Visitor & Outsider') NOT NULL,
+  `submitter_type` enum('Student','Teacher & Staff') NOT NULL,
   `is_anonymous` tinyint(1) NOT NULL DEFAULT 0,
   `category` varchar(100) NOT NULL,
   `rating` tinyint(4) NOT NULL CHECK (`rating` between 1 and 5),
@@ -77,10 +77,9 @@ INSERT INTO `feedback` VALUES
 (1,'Aayush Shrestha','Student',0,'Library',4,'Library needs more seating during exam weeks, but the collection is great.','2026-09-21 16:43:31'),
 (2,NULL,'Student',1,'Teacher',2,'One of the lecturers is frequently absent without notice.','2026-09-22 16:43:31'),
 (3,'Subien Byanjankar','Teacher & Staff',0,'Administration',5,'The new online notice system has made communication much smoother.','2026-09-23 16:43:31'),
-(4,NULL,'Visitor & Outsider',1,'Campus',3,'Signage around the main gate could be clearer for first-time visitors.','2026-09-23 16:43:31'),
 (5,NULL,'Teacher & Staff',1,'Facilities',4,'efedfrf','2026-10-04 16:23:35'),
 (7,'Sabita Khadka','Student',0,'Other',5,'good good','2026-10-04 16:26:14'),
-(8,'Sabita Khadka','Visitor & Outsider',0,'Other',5,'swdfghjkdfghj','2026-10-04 16:36:26');
+(8,'Sabita Khadka','Student',0,'Other',5,'swdfghjkdfghj','2026-10-04 16:36:26');
 /*!40000 ALTER TABLE `feedback` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;

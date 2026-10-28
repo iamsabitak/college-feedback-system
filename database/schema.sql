@@ -25,7 +25,7 @@ ON DUPLICATE KEY UPDATE username = username;
 CREATE TABLE IF NOT EXISTS feedback (
     id              INT AUTO_INCREMENT PRIMARY KEY,
     submitter_name  VARCHAR(100) NULL,                         -- nullable: empty when anonymous
-    submitter_type  ENUM('Student','Teacher & Staff','Visitor & Outsider','Public') NOT NULL,
+    submitter_type  ENUM('Student','Teacher & Staff') NOT NULL,
     is_anonymous    TINYINT(1) NOT NULL DEFAULT 0,
     category        VARCHAR(100) NOT NULL,
     feedback_title VARCHAR(200) NULL,
@@ -54,7 +54,7 @@ INSERT INTO feedback (submitter_name, submitter_type, is_anonymous, category, ra
 ('Aayush Shrestha', 'Student', 0, 'Library', 4, 'Library needs more seating during exam weeks, but the collection is great.', NOW() - INTERVAL 2 DAY),
 (NULL, 'Student', 1, 'Teacher', 2, 'One of the lecturers is frequently absent without notice.', NOW() - INTERVAL 1 DAY),
 ('Subien Byanjankar', 'Teacher & Staff', 0, 'Administration', 5, 'The new online notice system has made communication much smoother.', NOW()),
-(NULL, 'Visitor & Outsider', 1, 'Campus', 3, 'Signage around the main gate could be clearer for first-time visitors.', NOW());
+(NULL, 'Student', 1, 'Campus', 3, 'Signage around the main gate could be clearer for first-time visitors.', NOW());
 
 -- 11.3 portal user tables for student and staff access -------------------
 CREATE TABLE IF NOT EXISTS portal_users (

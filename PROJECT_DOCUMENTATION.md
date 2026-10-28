@@ -1,6 +1,6 @@
 # College Feedback System — Student / Staff / Admin Enhancements
 
-This project extends the existing public and admin flows with role-based student and staff portals and an admin status report.
+This project provides role-based student and staff portals with administrator status reporting.
 
 ## Local database
 
@@ -16,12 +16,10 @@ Run from the project root:
 mysql -u root -proot < database/migration_users.sql
 mysql -u root -proot < database/migration_status_log.sql
 mysql -u root -proot < database/migration_student_approvals.sql
-mysql -u root -proot < database/migration_public_feedback_type.sql
 ```
 
 ## Role model
 
-- Public feedback uses one role-free form, stores the submitter type as `Public`, and never stores a name when anonymous submission is selected.
 - Student and staff credentials live in `portal_users`; the corresponding managed identities are represented in `users`.
 - Staff can create student identities only. Those identities remain pending and cannot sign in until an administrator approves them; rejected identities remain blocked.
 - The admin student-approvals page lists only staff-created student identities and records approval or rejection in the account audit log.
@@ -37,7 +35,6 @@ mysql -u root -proot < database/migration_public_feedback_type.sql
 
 ## Project structure
 
-- `public-portal/` — feedback form and confirmation pages
 - `student-portal/` — student dashboard and auth flows
 - `staff-portal/` — staff dashboard and portal management
 - `admin-portal/` — admin dashboard and reports

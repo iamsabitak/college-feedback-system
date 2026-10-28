@@ -57,10 +57,6 @@ if (isset($pdo) && !empty($_SESSION['admin_id'])) {
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3h8l4 4v14H4V3h4Z"/><path d="M8 11h8M8 15h8M8 7h3"/></svg>
         Audit Log
       </a>
-      <a href="../public-portal/index.php" class="sb-link" target="_blank">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg>
-        View Public Site
-      </a>
     </nav>
     <div class="sb-footer account-menu" id="accountMenu">
       <button type="button" class="sb-account-trigger" id="accountMenuToggle" aria-expanded="false" aria-controls="accountPopover">

@@ -1,6 +1,6 @@
 <?php
 /**
- * Landing page that links to the public and administrator portals.
+ * Landing page that links to the protected application portals.
  *
  * Application-owned logic for index.php.
  */
@@ -89,7 +89,6 @@
   <div class="shell">
     <header>
       <div class="brand"><span class="brand-mark"><img class="brand-logo" src="assets/logo.svg" alt=""></span><span>College Feedback</span></div>
-      <a class="help-link" href="public-portal/contact.php"><i class="fas fa-headset"></i>Need help? Contact us</a>
     </header>
 
     <main>
@@ -105,15 +104,6 @@
       </section>
 
       <section class="choices" aria-label="Choose a portal">
-        <div class="portal-card">
-          <div class="card-icon"><i class="fas fa-comments"></i></div>
-          <div class="card-content">
-            <span class="card-label">For students, staff & visitors</span>
-            <h2>Public Feedback Portal</h2>
-            <p>Tell us about courses, facilities, services, and your overall experience.</p>
-            <a href="public-portal/index.php" class="card-link">Explore Public Portal<i class="fas fa-arrow-right"></i></a>
-          </div>
-        </div>
         <div class="portal-card">
           <div class="card-icon"><i class="fas fa-user-graduate"></i></div>
           <div class="card-content">

@@ -7,7 +7,6 @@ Built exactly to the stack named in Section 9.2 of the project proposal:
 
 ```
 college-feedback-system/
-├── public-portal/      ← Frontend portal for public feedback and contact pages
 ├── student-portal/     ← Student login, dashboard, and password reset flows
 ├── staff-portal/       ← Staff login, review dashboard, and account management
 ├── admin-portal/       ← Admin login, dashboard, status updates, and reports
@@ -22,12 +21,12 @@ college-feedback-system/
 │   ├── migration_portal_feedback_fields.sql ← Student/staff feedback fields and attachments
 │   └── college_feedback.sql      ← Legacy schema dump for reference
 ├── composer.json       ← PHPMailer dependency
-├── index.php           ← Portal landing page with Public, Student, and Staff/Admin entry points
+├── index.php           ← Portal landing page with Student, Staff, and Admin entry points
 ├── PROJECT_DOCUMENTATION.md
 └── README.md
 ```
 
-The project now spans public, student, staff, and admin portal flows while leaving the original public and admin portals intact.
+The project provides protected student, staff, and administrator portal flows.
 
 ## Setup (XAMPP)
 
@@ -48,12 +47,10 @@ The project now spans public, student, staff, and admin portal flows while leavi
    mysql -u root -proot < database/migration_student_staff.sql
    mysql -u root -proot < database/migration_accounts.sql
    mysql -u root -proot < database/migration_student_approvals.sql
-   mysql -u root -proot < database/migration_public_feedback_type.sql
    mysql -u root -proot < database/migration_status_log.sql
    mysql -u root -proot < database/migration_portal_feedback_fields.sql
    ```
 5. Visit:
-   - Public portal: `http://localhost/college-feedback-system/public-portal/`
    - Student portal: `http://localhost/college-feedback-system/student-portal/login.php`
    - Staff portal: `http://localhost/college-feedback-system/staff-portal/login.php`
    - Admin portal: `http://localhost/college-feedback-system/admin-portal/login.php`
@@ -91,7 +88,7 @@ Install PHPMailer from the project root (Composer must be installed):
 composer require phpmailer/phpmailer
 ```
 
-OTP email and the public contact form use Gmail SMTP through the shared PHPMailer helper. On the
+OTP email uses Gmail SMTP through the shared PHPMailer helper. On the
 Gmail account `sabitakhadka091@gmail.com`, enable **2-Step Verification**, then create an **App
 Password** at <https://myaccount.google.com/apppasswords>. Configure the generated App Password
 as the `OTP_SMTP_APP_PASSWORD` environment variable, or put it in the Git-ignored local file
@@ -102,18 +99,8 @@ as the `OTP_SMTP_APP_PASSWORD` environment variable, or put it in the Git-ignore
 return ['app_password' => 'your Google App Password'];
 ```
 
-Do not use the account password or commit the App Password. Contact form messages are delivered to
-`sabitakhadka091@gmail.com`; replies use the sender's validated email address. OTP codes expire
-after 60 seconds, and another request is rate-limited for 60 seconds server-side.
-
-### Public contact form
-
-The Contact page includes a message form for name, email, subject, and message. Submissions are
-validated on the server and sent through PHPMailer; delivery errors are logged privately and shown
-to the visitor as a generic retry message. On desktop, the map and directions note are stacked
-above Office Hours in the left column, and the message form fills the right column. On mobile, the
-map and Office Hours appear first, followed by the form. The campus social links and feedback call
-to action remain in the Office Hours panel.
+Do not use the account password or commit the App Password. OTP codes expire after 60 seconds,
+and another request is rate-limited for 60 seconds server-side.
 
 ### Admin profile setup
 
@@ -163,8 +150,8 @@ hash with PHP's `password_hash('yourpassword', PASSWORD_DEFAULT)`.
 
 | # | Module | Where |
 |---|--------|-------|
-| 1 | Feedback Form | `public-portal/feedback.php`, `js/main.js` (role-based categories, star rating) |
-| 2 | Anonymous Feedback | `public-portal/submit_feedback.php` — name is never read from the request when anonymous, so it can't reach the database |
+| 1 | Feedback Form | Student and staff dashboards (role-specific fields, rating, and attachments) |
+| 2 | Anonymous Feedback | Student and staff dashboards — anonymous submissions do not expose names in standard feedback details |
 | 3 | Admin Login | `admin-portal/login.php` — `password_verify()`, generic error message, session regeneration |
 | 4 | Admin Dashboard | `admin-portal/dashboard.php` — 4 summary cards, feedback table |
 | 5 | Search, Filter & Delete | `admin-portal/dashboard.php` (search + 4 filters), `delete_feedback.php` + confirmation modal |
@@ -173,7 +160,6 @@ hash with PHP's `password_hash('yourpassword', PASSWORD_DEFAULT)`.
 | 8 | Admin Profile | `admin-portal/profile.php`, `admin-portal/update_profile.php` — inline profile updates and verified email changes |
 | 9 | Feedback Notifications | `database/migration_notifications.sql`, `admin-portal/check_new_feedback.php`, and read endpoints — authenticated per-admin polling and read state |
 | 10 | Ratings Chart | `admin-portal/dashboard.php` — dependency-free 1–5 rating distribution chart |
-| 11 | Public Contact Form | `public-portal/contact.php`, `public-portal/submit_contact.php` — validated visitor messages sent using the shared PHPMailer/Gmail SMTP configuration |
 
 ## Security notes (Section 13)
 
