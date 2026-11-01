@@ -5,6 +5,7 @@
   </main>
 </div>
 
+<?php include dirname(__DIR__, 2) . '/confirmation_modal.php'; ?>
 <script src="js/admin.js"></script>
 </body>
 </html>

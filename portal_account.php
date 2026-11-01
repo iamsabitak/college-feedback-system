@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/portal_notifications.php';
 
 function processPortalAccountPost(PDO $pdo, int $portalUserId, int $linkedUserId, string $role, array &$account, string $csrfToken): array
 {
@@ -47,6 +48,7 @@ function processPortalAccountPost(PDO $pdo, int $portalUserId, int $linkedUserId
                 $updateManaged = $pdo->prepare('UPDATE users SET full_name = :full_name, username = :username WHERE id = :id AND role = :role');
                 $updateManaged->execute([':full_name' => $fullName, ':username' => $username, ':id' => $linkedUserId, ':role' => $role]);
             }
+            notifyAllAdministrators($pdo, 'identity_update', ucfirst($role) . ' identity updated', $fullName . ' updated their profile details.');
             $pdo->commit();
             $account['full_name'] = $fullName;
             $account['username'] = $username;

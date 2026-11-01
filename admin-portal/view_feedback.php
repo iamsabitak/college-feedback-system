@@ -128,7 +128,7 @@ include 'includes/header.php';
   <div class="modal-box">
     <h3>Delete this feedback entry?</h3>
     <p>You're about to permanently delete the entry from <strong id="deleteTargetName"></strong>. This cannot be undone.</p>
-    <form id="deleteForm" method="POST" action="delete_feedback.php">
+    <form id="deleteForm" method="POST" action="delete_feedback.php" data-confirm data-confirm-title="Delete feedback?" data-confirm-message="This feedback entry will be permanently deleted." data-confirm-label="Delete" data-confirm-danger="true">
       <input type="hidden" name="redirect" value="dashboard.php">
       <div class="modal-actions">
         <button type="button" class="btn btn-outline" data-modal-close>Cancel</button>

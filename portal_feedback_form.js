@@ -1,15 +1,31 @@
 document.addEventListener('DOMContentLoaded', function () {
-  const semesterOptions = {
-    '+2 Science': ['Grade 11', 'Grade 12'],
-    '+2 Management': ['Grade 11', 'Grade 12'],
-    BCA: ['1st Semester', '2nd Semester', '3rd Semester', '4th Semester', '5th Semester', '6th Semester', '7th Semester', '8th Semester'],
-    BBS: ['1st Year', '2nd Year', '3rd Year', '4th Year'],
-    MBS: ['1st Semester', '2nd Semester', '3rd Semester', '4th Semester']
-  };
   const maxFileSize = 5 * 1024 * 1024;
   const allowedExtensions = ['jpg', 'jpeg', 'png', 'pdf'];
 
   document.querySelectorAll('[data-feedback-form]').forEach(function (form) {
+    const optionSelects = Array.from(form.querySelectorAll('[data-feedback-options]'));
+    const optionApi = window.location.pathname.indexOf('/student-portal/') !== -1 ? 'feedback_options.php' : 'feedback_options.php';
+    function setOptions(select, values, placeholder) {
+      const selected = select.dataset.selected || '';
+      select.replaceChildren(new Option(placeholder, ''));
+      values.forEach(function (value) { const option = new Option(value, value); option.selected = value === selected; select.add(option); });
+      select.disabled = false;
+    }
+    async function loadFeedbackOptions() {
+      try {
+        const response = await fetch(optionApi, { headers: { Accept: 'application/json' }, cache: 'no-store' });
+        if (!response.ok) throw new Error('Unable to load form options.');
+        const options = await response.json();
+        optionSelects.forEach(function (select) {
+          const key = select.dataset.feedbackOptions;
+          if (Array.isArray(options[key])) setOptions(select, options[key], key === 'topics' ? 'Choose a topic' : key === 'categories' ? 'Choose a category' : key === 'roles' ? 'Choose your role' : key === 'departments' ? (select.name === 'department_faculty' ? 'Choose your program' : 'Choose a department') : 'Choose an option');
+        });
+        initializeSemesters(options.semesters || {});
+      } catch (error) {
+        optionSelects.forEach(function (select) { select.replaceChildren(new Option('Options unavailable — retry', '')); select.disabled = true; });
+        const note = document.createElement('p'); note.className = 'feedback-options-error'; note.textContent = 'Could not load form options. Please refresh and try again.'; form.prepend(note);
+      }
+    }
     form.querySelectorAll('[data-star-group]').forEach(function (group) {
       const stars = Array.from(group.querySelectorAll('input[type="radio"]'));
       function updateStars() {
@@ -22,8 +38,8 @@ document.addEventListener('DOMContentLoaded', function () {
       updateStars();
     });
 
-    const program = form.querySelector('[data-feedback-program]');
-    const semester = form.querySelector('[data-feedback-semester]');
+    function initializeSemesters(semesterOptions) {
+    const program = form.querySelector('[data-feedback-program]'); const semester = form.querySelector('[data-feedback-semester]');
     if (program && semester) {
       let savedSemester = semester.dataset.selected || '';
       function populateSemesters() {
@@ -44,6 +60,8 @@ document.addEventListener('DOMContentLoaded', function () {
       });
       populateSemesters();
     }
+    }
+    loadFeedbackOptions();
 
     const attachment = form.querySelector('[data-feedback-attachment]');
     if (attachment) {

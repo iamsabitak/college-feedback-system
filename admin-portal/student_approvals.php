@@ -117,7 +117,7 @@ include 'includes/header.php';
                 <?php if ($student['approval_status'] === 'pending'): ?>
                   <div class="row-actions">
                     <?php foreach (['approve' => 'Approve', 'reject' => 'Reject'] as $decision => $label): ?>
-                      <form method="POST" action="student_approval_action.php">
+                      <form method="POST" action="student_approval_action.php" data-confirm data-confirm-title="<?php echo $decision === 'approve' ? 'Approve student account?' : 'Reject student account?'; ?>" data-confirm-message="<?php echo $decision === 'approve' ? 'The student will be allowed to access the portal.' : 'The student account request will be rejected.'; ?>" data-confirm-label="<?php echo $label; ?>"<?php echo $decision === 'reject' ? ' data-confirm-danger=\"true\"' : ''; ?>>
                         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                         <input type="hidden" name="student_id" value="<?php echo (int) $student['id']; ?>">
                         <input type="hidden" name="decision" value="<?php echo $decision; ?>">

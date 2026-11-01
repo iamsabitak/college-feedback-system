@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>College Online Feedback System – Patan Nistha Campus</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:wght@600;700&display=swap" rel="stylesheet">
+<link rel="icon" type="image/svg+xml" href="assets/logo.svg">
 <style>
 :root{--navy:#0f1a35;--navy2:#16254a;--green:#3f6a52;--green2:#8fc7a6;--gold:#f2b441;--bg:#f4f2ed;--card:#fff;--ink:#14213d;--muted:#5b6478;--line:#e4e0d6;--chip:#e3efe8;
 box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
@@ -20,7 +21,7 @@ a{color:inherit;text-decoration:none}
 .nav{position:sticky;top:0;z-index:20;background:rgba(15,26,53,.92);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.08);color:#fff}
 .nav .wrap{display:flex;align-items:center;justify-content:space-between;height:72px;gap:16px}
 .brand{display:flex;align-items:center;gap:14px}
-.brand svg{flex-shrink:0}
+.brand img{flex-shrink:0;object-fit:contain}
 .brand i{width:1px;height:34px;background:rgba(255,255,255,.18)}
 .brand small{display:block;font-size:11px;letter-spacing:.14em;color:var(--green2);font-weight:700}
 .brand b{font:700 17px "Source Serif 4",Georgia,serif}
@@ -77,7 +78,7 @@ footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
 <body>
 <header class="nav"><div class="wrap">
   <a class="brand" href="#top">
-    <svg width="40" height="40" viewBox="0 0 40 40"><path d="M20 3l14 5v12c0 8-6 14-14 17C12 34 6 28 6 20V8z" fill="#fff"/><path d="M20 8l9 3.4-9 3.4-9-3.4z" fill="#3f6a52"/><path d="M14 17v4c3 2 9 2 12 0v-4l-6 2.4z" fill="#14213d"/></svg>
+    <img src="assets/logo.svg" width="40" height="40" alt="Patan Nistha Campus logo"/>
     <i></i><div><small>PATAN NISTHA CAMPUS</small><b>College Online Feedback</b></div>
   </a>
   <nav class="links"><a href="#top">Home</a><a href="#portals">Portals</a><a href="#how">How it works</a><a class="btn light" href="#portals">Access Portal</a></nav>

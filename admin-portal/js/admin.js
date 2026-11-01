@@ -742,6 +742,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let entries = [];
     let seenEntryIds = new Set();
     let notificationFilter = 'all';
+    let previousUnreadCount = null;
     try {
       const stored = sessionStorage.getItem(markerKey);
       if (stored !== null && /^\d+$/.test(stored)) lastSeen = Number(stored);
@@ -804,15 +805,15 @@ document.addEventListener('DOMContentLoaded', function () {
           item.appendChild(dot);
         }
         const type = document.createElement('span');
-        type.className = 'badge ' + ({ 'Student': 'badge-student', 'Teacher & Staff': 'badge-staff' }[entry.submitter_type] || '');
+        type.className = 'badge ' + ({ 'Student': 'badge-student', 'Teacher & Staff': 'badge-staff', 'System': 'badge-system' }[entry.submitter_type] || 'badge-system');
         type.textContent = entry.submitter_type;
         const detail = document.createElement('span');
         detail.className = 'notification-item-detail';
         const title = document.createElement('strong');
-        title.textContent = entry.category;
+        title.textContent = entry.title || entry.category || 'Notification';
         const meta = document.createElement('span');
         meta.className = 'notification-item-meta';
-        meta.textContent = '★'.repeat(entry.rating) + ' · ' + relativeTime(entry.submit_date);
+        meta.textContent = (entry.rating ? '★'.repeat(entry.rating) + ' · ' : '') + relativeTime(entry.submit_date);
         detail.append(title, meta);
         item.append(type, detail);
         item.addEventListener('click', async function () {
@@ -830,7 +831,7 @@ document.addEventListener('DOMContentLoaded', function () {
               showToast(error.message, 'error');
             }
           }
-          openNotificationDetail(entry);
+          if (entry.feedback_id) openNotificationDetail(entry);
         });
         notificationList.appendChild(item);
       });
@@ -840,6 +841,7 @@ document.addEventListener('DOMContentLoaded', function () {
       notificationCount.textContent = unread > 99 ? '99+' : String(unread);
       notificationCount.hidden = unread === 0;
       notificationToggle.setAttribute('aria-label', unread ? 'Notifications, ' + unread + ' unread' : 'Notifications');
+      previousUnreadCount = unread;
       if (animate && unread) {
         notificationCount.classList.remove('notification-pop');
         notificationToggle.querySelector('.notification-bell-icon').classList.remove('notification-ring');
@@ -878,7 +880,11 @@ document.addEventListener('DOMContentLoaded', function () {
         newEntries.forEach(function (entry) { seenEntryIds.add(entry.notification_id); });
         entries = data.entries || [];
         addEntries(newEntries);
+        const unreadBeforePoll = previousUnreadCount;
         setUnreadCount(data.unread_count, newEntries.length > 0);
+        if (unreadBeforePoll !== null && Number(data.unread_count) > unreadBeforePoll && newEntries.length > 0) {
+          showToast(newEntries.length === 1 ? 'New admin notification received.' : newEntries.length + ' new admin notifications received.', 'success');
+        }
         if (notificationTotal) notificationTotal.textContent = 'All feedback updates';
         lastSeen = latestId;
         try { sessionStorage.setItem(markerKey, String(lastSeen)); } catch (error) {}
@@ -938,7 +944,7 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     });
     pollNotifications();
-    window.setInterval(pollNotifications, 12000);
+    window.setInterval(pollNotifications, 6000);
   }
 
   /* ---------- Delete confirmation modal (Section 6.2, 13: delete requires confirmation) ---------- */

@@ -4,6 +4,8 @@ require __DIR__ . '/includes/db.php';
 require __DIR__ . '/../portal_account.php';
 require __DIR__ . '/../portal_charts.php';
 require __DIR__ . '/../portal_feedback.php';
+require_once __DIR__ . '/../portal_feedback_options.php';
+require_once __DIR__ . '/../portal_notifications.php';
 require __DIR__ . '/../portal_pagination.php';
 
 $staffId = (int) $_SESSION['staff_id'];
@@ -21,10 +23,8 @@ $accountTab = (string) ($_GET['account_tab'] ?? 'details');
 if (!in_array($accountTab, ['details', 'security'], true)) {
   $accountTab = 'details';
 }
-$feedbackCategories = ['Teachers', 'Courses', 'Library', 'Canteen', 'Laboratories', 'Facilities', 'Administration', 'Internal Processes', 'Overall Impression', 'Admissions', 'Campus', 'Events', 'Other'];
-$staffDepartments = ['Teaching / Faculty', 'Administration', 'Accounts / Finance', 'IT Department', 'Library', 'Laboratory', 'Management', 'Other'];
-$staffRoles = ['Lecturer / Teacher', 'Department Coordinator', 'Program Coordinator', 'Administrative Staff', 'Accountant', 'IT Staff', 'Librarian', 'Lab Assistant', 'Support Staff', 'Management', 'Other'];
-$staffFeedbackCategories = ['Workplace Environment', 'Management and Leadership', 'Workload and Responsibilities', 'Staff Communication', 'Workplace Facilities', 'Equipment and Resources', 'Staff Welfare', 'Safety and Security', 'Policies and Procedures', 'Salary and Benefits', 'Complaint', 'Suggestion', 'Appreciation', 'Other'];
+$staffFormOptions = feedbackFormOptions($pdo, 'staff');
+$staffDepartments = $staffFormOptions['departments']; $staffRoles = $staffFormOptions['roles']; $staffFeedbackCategories = $staffFormOptions['categories'];
 $urgencyLevels = ['Low', 'Medium', 'High'];
 $ratingLabels = [1 => 'Poor', 2 => 'Fair', 3 => 'Good', 4 => 'Very Good', 5 => 'Excellent'];
 $feedbackCsrf = $_SESSION['staff_feedback_csrf'] ?? bin2hex(random_bytes(32));
@@ -49,8 +49,44 @@ if ($section === 'account') {
   [$accountError, $accountNotice] = processPortalAccountPost($pdo, $staffId, $accountUserId, 'staff', $staff, $accountCsrf);
 }
 $feedbackError = '';
+$editingFeedback = null;
+$feedbackFormValues = [];
+if ($section === 'feedback-form' && isset($_GET['edit'])) {
+  $editStmt = $pdo->prepare('SELECT * FROM feedback WHERE id = :id AND user_id = :user_id AND status = \'New\' LIMIT 1');
+  $editStmt->execute([':id' => (int) $_GET['edit'], ':user_id' => $accountUserId]);
+  $editingFeedback = $editStmt->fetch() ?: null;
+  if (!$editingFeedback) {
+    $_SESSION['portal_feedback_notice'] = ['type' => 'error', 'message' => 'Only new feedback can be edited.'];
+    header('Location: dashboard.php?section=feedback-history'); exit;
+  }
+  $feedbackFormValues = ['feedback_title' => $editingFeedback['feedback_title'], 'staff_department' => $editingFeedback['staff_department'], 'staff_role' => $editingFeedback['staff_role'], 'feedback_category' => $editingFeedback['category'], 'urgency_level' => $editingFeedback['urgency_level'], 'feedback_message' => $editingFeedback['message'], 'feedback_rating' => $editingFeedback['rating'], 'overall_satisfaction' => $editingFeedback['overall_satisfaction'], 'preferred_solution' => $editingFeedback['preferred_solution'], 'feedback_visibility' => $editingFeedback['is_anonymous'] ? 'anonymous' : 'identified', 'follow_up_required' => (string) $editingFeedback['follow_up_required']];
+}
+if ($_SERVER['REQUEST_METHOD'] === 'POST') $feedbackFormValues = array_merge($feedbackFormValues, $_POST);
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'submit_feedback') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delete_feedback') {
+  $deleteId = (int) ($_POST['feedback_id'] ?? 0);
+  if (!hash_equals($feedbackCsrf, (string) ($_POST['csrf_token'] ?? ''))) {
+    $_SESSION['portal_feedback_notice'] = ['type' => 'error', 'message' => 'The request expired. Please try again.'];
+  } else {
+    $attachmentStmt = $pdo->prepare('SELECT attachment_path FROM feedback WHERE id = :id AND user_id = :user_id AND status = \'New\' LIMIT 1');
+    $attachmentStmt->execute([':id' => $deleteId, ':user_id' => $accountUserId]);
+    $attachment = $attachmentStmt->fetchColumn();
+    if ($attachment === false) {
+      $_SESSION['portal_feedback_notice'] = ['type' => 'error', 'message' => 'Only new feedback can be deleted.'];
+    } else {
+      $deleteStmt = $pdo->prepare('DELETE FROM feedback WHERE id = :id AND user_id = :user_id AND status = \'New\'');
+      $deleteStmt->execute([':id' => $deleteId, ':user_id' => $accountUserId]);
+      deletePortalFeedbackAttachment((string) $attachment);
+      $_SESSION['portal_feedback_notice'] = ['type' => 'success', 'message' => 'Feedback deleted.'];
+    }
+  }
+  header('Location: dashboard.php?section=feedback-history');
+  exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($_POST['action'] ?? '', ['submit_feedback', 'update_feedback'], true)) {
+  $isFeedbackUpdate = ($_POST['action'] ?? '') === 'update_feedback';
+  $editingId = (int) ($_POST['feedback_id'] ?? 0);
   $category = trim((string) ($_POST['feedback_category'] ?? ''));
   $title = trim((string) ($_POST['feedback_title'] ?? ''));
   $department = trim((string) ($_POST['staff_department'] ?? ''));
@@ -70,6 +106,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'submi
     $feedbackError = 'The form expired. Refresh the page and try again.';
   } elseif ($accountUserId < 1) {
     $feedbackError = 'Your portal identity could not be linked to a feedback account. Contact an administrator.';
+  } elseif ($isFeedbackUpdate && !$editingId) {
+    $feedbackError = 'The feedback entry could not be found.';
   } elseif (!in_array($category, $staffFeedbackCategories, true)) {
     $feedbackError = 'Choose a valid feedback category.';
   } elseif ($title === '' || $titleLength > 200) {
@@ -99,6 +137,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'submi
     } else {
       try {
         $pdo->beginTransaction();
+        if ($isFeedbackUpdate) {
+          $existingStmt = $pdo->prepare('SELECT attachment_path, attachment_name FROM feedback WHERE id = :id AND user_id = :user_id AND status = \'New\' FOR UPDATE');
+          $existingStmt->execute([':id' => $editingId, ':user_id' => $accountUserId]);
+          $existing = $existingStmt->fetch();
+          if (!$existing) throw new RuntimeException('This feedback can no longer be edited.');
+          $updateStmt = $pdo->prepare('UPDATE feedback SET submitter_name = :name, is_anonymous = :is_anonymous, category = :category, feedback_title = :title, urgency_level = :urgency, rating = :rating, overall_satisfaction = :overall_satisfaction, message = :message, preferred_solution = :preferred_solution, follow_up_required = :follow_up_required, staff_department = :department, staff_role = :role, attachment_path = :attachment_path, attachment_name = :attachment_name WHERE id = :id AND user_id = :user_id AND status = \'New\'');
+          $updateStmt->execute([':name' => $visibility === 'anonymous' ? null : $staff['full_name'], ':is_anonymous' => $visibility === 'anonymous' ? 1 : 0, ':category' => $category, ':title' => strip_tags($title), ':urgency' => $urgency, ':rating' => $rating, ':overall_satisfaction' => $overallSatisfaction, ':message' => strip_tags($message), ':preferred_solution' => $preferredSolution === '' ? null : strip_tags($preferredSolution), ':follow_up_required' => (int) $followUpRequired, ':department' => $department, ':role' => $staffRole, ':attachment_path' => $attachment['path'] ?? $existing['attachment_path'], ':attachment_name' => $attachment['name'] ?? $existing['attachment_name'], ':id' => $editingId, ':user_id' => $accountUserId]);
+          if ($attachment['path'] && $existing['attachment_path']) deletePortalFeedbackAttachment((string) $existing['attachment_path']);
+          $pdo->commit(); $_SESSION['portal_feedback_notice'] = ['type' => 'success', 'message' => 'Feedback updated.']; header('Location: dashboard.php?section=feedback-history' . (isset($_GET['embed']) ? '&embed=1&saved=1' : '')); exit;
+        }
         $feedbackStmt = $pdo->prepare(
           'INSERT INTO feedback (submitter_name, user_id, submitter_type, is_anonymous, category, feedback_title, urgency_level, rating, overall_satisfaction, message, preferred_solution, follow_up_required, staff_department, staff_role, attachment_path, attachment_name, status, submit_date)
            VALUES (:name, :user_id, \'Teacher & Staff\', :is_anonymous, :category, :title, :urgency, :rating, :overall_satisfaction, :message, :preferred_solution, :follow_up_required, :staff_department, :staff_role, :attachment_path, :attachment_name, \'New\', NOW())'
@@ -121,11 +169,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'submi
           ':attachment_name' => $attachment['name'],
         ]);
         $feedbackId = (int) $pdo->lastInsertId();
-        $pdo->prepare('INSERT INTO notifications (feedback_id, admin_id, is_read) SELECT :feedback_id, id, 0 FROM admin')
-          ->execute([':feedback_id' => $feedbackId]);
+        notifyAllAdministrators($pdo, 'feedback', 'New staff feedback', 'A staff member submitted feedback for review.', $feedbackId);
         $pdo->commit();
         $_SESSION['portal_feedback_notice'] = ['type' => 'success', 'message' => 'Feedback submitted. You can track its status under My Feedback.'];
-        header('Location: dashboard.php?section=feedback-form');
+        header('Location: dashboard.php?section=feedback-history' . (isset($_GET['embed']) ? '&embed=1&saved=1' : ''));
         exit;
       } catch (Throwable $e) {
         if ($pdo->inTransaction()) {
@@ -142,7 +189,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'submi
 $feedbackStmt = $pdo->prepare('SELECT id, category, feedback_title, urgency_level, staff_department, staff_role, rating, overall_satisfaction, is_anonymous, message, status, submit_date FROM feedback WHERE user_id = :user_id ORDER BY submit_date DESC');
 $feedbackStmt->execute([':user_id' => $accountUserId]);
 $feedbackRows = $feedbackStmt->fetchAll();
-$feedbackHistoryTotal = count($feedbackRows);
+$feedbackSearch = trim((string) ($_GET['q'] ?? ''));
+$feedbackDate = (string) ($_GET['date'] ?? '');
+$feedbackStatusFilter = (string) ($_GET['status'] ?? '');
+$feedbackVisibilityFilter = (string) ($_GET['visibility'] ?? '');
+if (!in_array($feedbackStatusFilter, ['', 'New', 'Reviewed', 'Resolved'], true)) $feedbackStatusFilter = '';
+if (!in_array($feedbackVisibilityFilter, ['', 'identified', 'anonymous'], true)) $feedbackVisibilityFilter = '';
+if ($feedbackDate !== '' && !preg_match('/^\\d{4}-\\d{2}-\\d{2}$/', $feedbackDate)) $feedbackDate = '';
+$filteredFeedbackRows = array_values(array_filter($feedbackRows, static function (array $row) use ($feedbackSearch, $feedbackDate, $feedbackStatusFilter, $feedbackVisibilityFilter): bool {
+  $haystack = strtolower(implode(' ', [$row['feedback_title'] ?? '', $row['category'] ?? '', $row['message'] ?? '', $row['staff_department'] ?? '', $row['staff_role'] ?? '']));
+  return ($feedbackSearch === '' || str_contains($haystack, strtolower($feedbackSearch))) && ($feedbackDate === '' || substr((string) $row['submit_date'], 0, 10) === $feedbackDate) && ($feedbackStatusFilter === '' || $row['status'] === $feedbackStatusFilter) && ($feedbackVisibilityFilter === '' || ($feedbackVisibilityFilter === 'anonymous') === (bool) $row['is_anonymous']);
+}));
+$feedbackHistoryTotal = count($filteredFeedbackRows);
 $allowedFeedbackPageSizes = [10, 20, 50];
 $requestedFeedbackPageSize = $_GET['per_page'] ?? '10';
 $feedbackHistoryPerPage = is_string($requestedFeedbackPageSize) ? (int) $requestedFeedbackPageSize : 10;
@@ -153,7 +211,7 @@ $requestedFeedbackPage = $_GET['page'] ?? '1';
 $feedbackHistoryPage = is_string($requestedFeedbackPage) ? max(1, (int) $requestedFeedbackPage) : 1;
 $feedbackHistoryPages = max(1, (int) ceil($feedbackHistoryTotal / $feedbackHistoryPerPage));
 $feedbackHistoryPage = min($feedbackHistoryPage, $feedbackHistoryPages);
-$feedbackHistoryRows = array_slice($feedbackRows, ($feedbackHistoryPage - 1) * $feedbackHistoryPerPage, $feedbackHistoryPerPage);
+$feedbackHistoryRows = array_slice($filteredFeedbackRows, ($feedbackHistoryPage - 1) * $feedbackHistoryPerPage, $feedbackHistoryPerPage);
 $feedbackCounts = ['New' => 0, 'Reviewed' => 0, 'Resolved' => 0];
 foreach ($feedbackRows as $feedbackRow) {
   if (isset($feedbackCounts[$feedbackRow['status']])) {
@@ -222,7 +280,7 @@ $weeklyPath = 'M' . str_replace(' ', ' L', $weeklyPoints);
   <link rel="stylesheet" href="../portal_sidebar.css">
   <link rel="stylesheet" href="../list_ui.css">
 </head>
-<body class="dashboard-body">
+<body class="dashboard-body<?php echo $section === 'feedback-form' && isset($_GET['embed']) ? ' feedback-embed' : ''; ?>">
   <?php
   $portalSidebarRole = 'Staff';
   $portalSidebarUser = $staff;
@@ -280,7 +338,7 @@ $weeklyPath = 'M' . str_replace(' ', ' L', $weeklyPoints);
         <section class="content-card portal-widget-panel" aria-labelledby="quickActionsTitle">
           <div class="dashboard-panel-heading"><div><span class="chart-kicker">Workspace</span><h2 id="quickActionsTitle">Quick Actions</h2><p>Go directly to common tasks.</p></div></div>
           <div class="portal-quick-actions-grid">
-            <a class="portal-quick-action" href="dashboard.php?section=feedback-form"><span class="quick-action-icon" aria-hidden="true">＋</span><span><strong>Send Feedback</strong><small>Share a new comment or concern</small></span></a>
+            <button class="portal-quick-action" type="button" data-send-feedback><span class="quick-action-icon" aria-hidden="true">＋</span><span><strong>Send Feedback</strong><small>Share a new comment or concern</small></span></button>
             <a class="portal-quick-action" href="dashboard.php?section=feedback-history"><span class="quick-action-icon" aria-hidden="true">≡</span><span><strong>My Feedback</strong><small>Review your submissions</small></span></a>
             <a class="portal-quick-action" href="dashboard.php?section=account"><span class="quick-action-icon" aria-hidden="true">◇</span><span><strong>Profile Settings</strong><small>Update your account details</small></span></a>
           </div>
@@ -288,23 +346,24 @@ $weeklyPath = 'M' . str_replace(' ', ' L', $weeklyPoints);
       </div>
     <?php elseif ($section === 'feedback-form'): ?>
       <section class="content-card form-card feedback-form-card">
-        <div class="card-header"><h2>Send feedback</h2></div>
+        <div class="card-header"><h2><?php echo $editingFeedback ? 'Edit feedback' : 'Send feedback'; ?></h2></div>
         <?php if ($feedbackNotice): ?><div class="alert alert-success" role="status"><?php echo htmlspecialchars($feedbackNotice['message'], ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
         <?php if ($feedbackError): ?><div class="alert alert-error" role="alert"><?php echo htmlspecialchars($feedbackError, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
-        <form method="POST" action="dashboard.php?section=feedback-form" class="submission-form feedback-details-form staff-feedback-form" enctype="multipart/form-data" data-feedback-form>
-          <input type="hidden" name="action" value="submit_feedback"><input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($feedbackCsrf, ENT_QUOTES, 'UTF-8'); ?>">
+        <?php if ($editingFeedback): ?><script>(function(){function populateFeedbackForm(){var values=<?php echo json_encode($feedbackFormValues, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;Object.keys(values).forEach(function(name){var control=document.querySelector('[name="'+name+'"]');if(!control)return;var radios=document.querySelectorAll('[name="'+name+'"][type="radio"]');if(radios.length){radios.forEach(function(radio){radio.checked=String(radio.value)===String(values[name]);});}else{control.value=values[name]??'';}});}if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',populateFeedbackForm,{once:true});}else{populateFeedbackForm();}})();</script><?php endif; ?>
+        <form method="POST" action="dashboard.php?section=feedback-form<?php echo $editingFeedback ? '&amp;edit=' . (int) $editingFeedback['id'] : ''; ?><?php echo isset($_GET['embed']) ? '&amp;embed=1' : ''; ?>" class="submission-form feedback-details-form staff-feedback-form" enctype="multipart/form-data" data-feedback-form data-confirm data-confirm-title="<?php echo $editingFeedback ? 'Save feedback changes?' : 'Submit feedback?'; ?>" data-confirm-message="<?php echo $editingFeedback ? 'Your changes will be sent for review.' : 'Submit this feedback to the college?'; ?>" data-confirm-label="<?php echo $editingFeedback ? 'Save changes' : 'Submit feedback'; ?>">
+          <input type="hidden" name="action" value="<?php echo $editingFeedback ? 'update_feedback' : 'submit_feedback'; ?>"><?php if ($editingFeedback): ?><input type="hidden" name="feedback_id" value="<?php echo (int) $editingFeedback['id']; ?>"><?php endif; ?><input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($feedbackCsrf, ENT_QUOTES, 'UTF-8'); ?>">
           <section class="feedback-form-section">
             <div class="feedback-form-section-heading"><span>1</span><div><h3>About you</h3><p>Tell us your department and role.</p></div></div>
             <div class="feedback-form-fields">
               <div class="field full-width"><label for="feedback_title">Feedback title</label><input type="text" id="feedback_title" name="feedback_title" maxlength="200" placeholder="Enter a short title for your feedback" value="<?php echo htmlspecialchars($_POST['feedback_title'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" required></div>
-              <div class="field"><label for="staff_department">Staff department</label><select id="staff_department" name="staff_department" required><option value="">Choose a department</option><?php foreach ($staffDepartments as $staffDepartment): ?><option value="<?php echo htmlspecialchars($staffDepartment, ENT_QUOTES, 'UTF-8'); ?>" <?php echo ($_POST['staff_department'] ?? '') === $staffDepartment ? 'selected' : ''; ?>><?php echo htmlspecialchars($staffDepartment, ENT_QUOTES, 'UTF-8'); ?></option><?php endforeach; ?></select></div>
-              <div class="field"><label for="staff_role">Staff role</label><select id="staff_role" name="staff_role" required><option value="">Choose your role</option><?php foreach ($staffRoles as $staffRoleOption): ?><option value="<?php echo htmlspecialchars($staffRoleOption, ENT_QUOTES, 'UTF-8'); ?>" <?php echo ($_POST['staff_role'] ?? '') === $staffRoleOption ? 'selected' : ''; ?>><?php echo htmlspecialchars($staffRoleOption, ENT_QUOTES, 'UTF-8'); ?></option><?php endforeach; ?></select></div>
+              <div class="field"><label for="staff_department">Staff department</label><select id="staff_department" name="staff_department" data-feedback-options="departments" data-selected="<?php echo htmlspecialchars($feedbackFormValues['staff_department'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" required disabled><option>Loading departments…</option></select></div>
+              <div class="field"><label for="staff_role">Staff role</label><select id="staff_role" name="staff_role" data-feedback-options="roles" data-selected="<?php echo htmlspecialchars($feedbackFormValues['staff_role'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" required disabled><option>Loading roles…</option></select></div>
             </div>
           </section>
           <section class="feedback-form-section">
             <div class="feedback-form-section-heading"><span>2</span><div><h3>Your feedback</h3><p>Describe the issue and how urgent it is.</p></div></div>
             <div class="feedback-form-fields">
-              <div class="field"><label for="feedback_category">Feedback category</label><select id="feedback_category" name="feedback_category" required><option value="">Choose a category</option><?php foreach ($staffFeedbackCategories as $feedbackCategory): ?><option value="<?php echo htmlspecialchars($feedbackCategory, ENT_QUOTES, 'UTF-8'); ?>" <?php echo ($_POST['feedback_category'] ?? '') === $feedbackCategory ? 'selected' : ''; ?>><?php echo htmlspecialchars($feedbackCategory, ENT_QUOTES, 'UTF-8'); ?></option><?php endforeach; ?></select></div>
+              <div class="field"><label for="feedback_category">Feedback category</label><select id="feedback_category" name="feedback_category" data-feedback-options="categories" data-selected="<?php echo htmlspecialchars($feedbackFormValues['feedback_category'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" required disabled><option>Loading categories…</option></select></div>
               <div class="field"><label for="urgency_level">Urgency level</label><select id="urgency_level" name="urgency_level" required><option value="">Choose urgency</option><?php foreach ($urgencyLevels as $urgencyLevel): ?><option value="<?php echo htmlspecialchars($urgencyLevel, ENT_QUOTES, 'UTF-8'); ?>" <?php echo ($_POST['urgency_level'] ?? '') === $urgencyLevel ? 'selected' : ''; ?>><?php echo htmlspecialchars($urgencyLevel, ENT_QUOTES, 'UTF-8'); ?></option><?php endforeach; ?></select></div>
               <div class="field full-width"><label for="feedback_message">Comment / Description</label><textarea id="feedback_message" name="feedback_message" rows="5" maxlength="2000" placeholder="Describe your feedback, concern, or experience." required><?php echo htmlspecialchars($_POST['feedback_message'] ?? '', ENT_QUOTES, 'UTF-8'); ?></textarea></div>
             </div>
@@ -335,21 +394,23 @@ $weeklyPath = 'M' . str_replace(' ', ' L', $weeklyPoints);
               <div class="field full-width"><label for="feedback_attachment">Choose a file <span class="optional-label">Optional</span></label><input type="file" id="feedback_attachment" name="feedback_attachment" data-feedback-attachment accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf"><small class="field-help" data-feedback-attachment-status>JPG, JPEG, PNG, or PDF. Maximum size: 5 MB.</small></div>
             </div>
           </section>
-          <div class="feedback-form-actions"><button type="submit" class="btn btn-primary">Submit feedback</button></div>
+          <div class="feedback-form-actions"><button type="submit" class="btn btn-primary"><?php echo $editingFeedback ? 'Save changes' : 'Submit feedback'; ?></button></div>
         </form>
       </section>
     <?php elseif ($section === 'feedback-history'): ?>
       <section class="content-card feedback-history-summary">
-        <div class="card-header"><h2>My feedback status</h2></div>
-        <div class="feedback-status-summary" aria-label="Feedback status totals"><?php foreach ($feedbackCounts as $feedbackStatus => $feedbackCount): ?><article class="feedback-status-card feedback-status-card-<?php echo strtolower($feedbackStatus); ?>"><span><?php echo htmlspecialchars($feedbackStatus, ENT_QUOTES, 'UTF-8'); ?></span><strong><?php echo $feedbackCount; ?></strong></article><?php endforeach; ?></div>
+        <div class="card-header"><h2>My feedback status</h2><button type="button" class="send-feedback-button" data-send-feedback><span aria-hidden="true">＋</span> Send Feedback</button></div>
+        <div class="feedback-status-summary" aria-label="Feedback status totals"><?php foreach ($feedbackCounts as $feedbackStatus => $feedbackCount): ?><article class="feedback-status-card feedback-status-card-<?php echo strtolower($feedbackStatus); ?>"><span><?php echo htmlspecialchars($feedbackStatus, ENT_QUOTES, 'UTF-8'); ?></span><strong><?php echo $feedbackCount; ?></strong><small><?php echo $feedbackStatus === 'New' ? 'Waiting for review' : ($feedbackStatus === 'Reviewed' ? 'Seen by a reviewer' : 'Closed with action taken'); ?></small></article><?php endforeach; ?></div>
       </section>
       <?php if (!$feedbackRows): ?><section class="content-card"><div class="empty-state">No feedback submitted yet.</div></section><?php else: ?>
+        <?php if ($feedbackNotice): ?><div class="alert alert-<?php echo $feedbackNotice['type'] === 'error' ? 'error' : 'success'; ?>" role="status"><?php echo htmlspecialchars($feedbackNotice['message'], ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
+        <form method="GET" class="portal-feedback-filters" aria-label="Filter feedback"><input type="hidden" name="section" value="feedback-history"><label><span class="sr-only">Search feedback</span><input type="search" name="q" value="<?php echo htmlspecialchars($feedbackSearch, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Search feedback"></label><label><span>Date</span><input type="date" name="date" value="<?php echo htmlspecialchars($feedbackDate, ENT_QUOTES, 'UTF-8'); ?>"></label><label><span>Status</span><select name="status"><option value="">All statuses</option><?php foreach (['New','Reviewed','Resolved'] as $filterStatus): ?><option value="<?php echo $filterStatus; ?>" <?php echo $feedbackStatusFilter === $filterStatus ? 'selected' : ''; ?>><?php echo $filterStatus; ?></option><?php endforeach; ?></select></label><label><span>Visibility</span><select name="visibility"><option value="">All visibility</option><option value="identified" <?php echo $feedbackVisibilityFilter === 'identified' ? 'selected' : ''; ?>>Identified</option><option value="anonymous" <?php echo $feedbackVisibilityFilter === 'anonymous' ? 'selected' : ''; ?>>Anonymous</option></select></label><button class="btn btn-primary" type="submit">Apply</button><a class="btn btn-outline" href="dashboard.php?section=feedback-history">Clear</a></form>
         <div class="list-table-card">
-          <div class="list-table-wrap"><table class="list-table"><thead><tr><th>Title</th><th>Category</th><th>Department</th><th>Role</th><th>Comment</th><th>Rating</th><th>Satisfaction</th><th>Urgency</th><th>Visibility</th><th>Status</th><th>Submitted</th></tr></thead><tbody>
-            <?php foreach ($feedbackHistoryRows as $feedbackRow): ?><tr><td><?php echo htmlspecialchars($feedbackRow['feedback_title'] ?: '—', ENT_QUOTES, 'UTF-8'); ?></td><td><?php echo htmlspecialchars($feedbackRow['category'], ENT_QUOTES, 'UTF-8'); ?></td><td><?php echo htmlspecialchars($feedbackRow['staff_department'] ?: '—', ENT_QUOTES, 'UTF-8'); ?></td><td><?php echo htmlspecialchars($feedbackRow['staff_role'] ?: '—', ENT_QUOTES, 'UTF-8'); ?></td><td class="portal-feedback-message"><?php echo htmlspecialchars($feedbackRow['message'], ENT_QUOTES, 'UTF-8'); ?></td><td><?php echo (int) $feedbackRow['rating']; ?> / 5</td><td><?php echo $feedbackRow['overall_satisfaction'] ? (int) $feedbackRow['overall_satisfaction'] . ' / 5' : '—'; ?></td><td><?php echo htmlspecialchars($feedbackRow['urgency_level'] ?: '—', ENT_QUOTES, 'UTF-8'); ?></td><td><?php echo $feedbackRow['is_anonymous'] ? 'Anonymous' : 'Identified'; ?></td><td><span class="status-badge feedback-status-<?php echo strtolower($feedbackRow['status']); ?>"><?php echo htmlspecialchars($feedbackRow['status'], ENT_QUOTES, 'UTF-8'); ?></span></td><td><?php echo htmlspecialchars(date('d M Y', strtotime($feedbackRow['submit_date'])), ENT_QUOTES, 'UTF-8'); ?></td></tr><?php endforeach; ?>
+          <div class="list-table-wrap"><table class="list-table"><thead><tr><th>Title</th><th>Category</th><th>Department</th><th>Role</th><th>Comment</th><th>Rating</th><th>Satisfaction</th><th>Urgency</th><th>Visibility</th><th>Status</th><th>Submitted</th><th>Actions</th></tr></thead><tbody>
+            <?php foreach ($feedbackHistoryRows as $feedbackRow): $isNew = $feedbackRow['status'] === 'New'; ?><tr><td><?php echo htmlspecialchars($feedbackRow['feedback_title'] ?: '—', ENT_QUOTES, 'UTF-8'); ?></td><td><?php echo htmlspecialchars($feedbackRow['category'], ENT_QUOTES, 'UTF-8'); ?></td><td><?php echo htmlspecialchars($feedbackRow['staff_department'] ?: '—', ENT_QUOTES, 'UTF-8'); ?></td><td><?php echo htmlspecialchars($feedbackRow['staff_role'] ?: '—', ENT_QUOTES, 'UTF-8'); ?></td><td class="portal-feedback-message"><?php echo htmlspecialchars($feedbackRow['message'], ENT_QUOTES, 'UTF-8'); ?></td><td><?php echo (int) $feedbackRow['rating']; ?> / 5</td><td><?php echo $feedbackRow['overall_satisfaction'] ? (int) $feedbackRow['overall_satisfaction'] . ' / 5' : '—'; ?></td><td><?php echo htmlspecialchars($feedbackRow['urgency_level'] ?: '—', ENT_QUOTES, 'UTF-8'); ?></td><td><?php echo $feedbackRow['is_anonymous'] ? 'Anonymous' : 'Identified'; ?></td><td><span class="status-badge feedback-status-<?php echo strtolower($feedbackRow['status']); ?>"><?php echo htmlspecialchars($feedbackRow['status'], ENT_QUOTES, 'UTF-8'); ?></span></td><td><?php echo htmlspecialchars(date('d M Y', strtotime($feedbackRow['submit_date'])), ENT_QUOTES, 'UTF-8'); ?></td><td><div class="feedback-row-actions"><?php if ($isNew): ?><button type="button" class="feedback-action" aria-label="Edit feedback" title="Edit feedback" data-send-feedback data-feedback-form-url="dashboard.php?section=feedback-form&amp;embed=1&amp;edit=<?php echo (int) $feedbackRow['id']; ?>"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m4 16.5-.8 4.3 4.3-.8L19 8.5 15.5 5 4 16.5Z"/><path d="m14.5 6 3.5 3.5"/></svg></button><form method="POST" class="feedback-delete-form" data-confirm data-confirm-title="Delete feedback?" data-confirm-message="This feedback entry will be permanently removed." data-confirm-label="Delete" data-confirm-danger="true"><input type="hidden" name="action" value="delete_feedback"><input type="hidden" name="feedback_id" value="<?php echo (int) $feedbackRow['id']; ?>"><input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($feedbackCsrf, ENT_QUOTES, 'UTF-8'); ?>"><button class="feedback-action danger" type="submit" aria-label="Delete feedback" title="Delete feedback"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2m3 0-1 14H6L5 6m5 5v6m4-6v6"/></svg></button></form><?php else: ?><button type="button" class="feedback-action is-locked" aria-label="Edit feedback" title="Only new feedback can be edited" data-feedback-locked><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m4 16.5-.8 4.3 4.3-.8L19 8.5 15.5 5 4 16.5Z"/><path d="m14.5 6 3.5 3.5"/></svg></button><button type="button" class="feedback-action danger is-locked" aria-label="Delete feedback" title="Only new feedback can be deleted" data-feedback-locked><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2m3 0-1 14H6L5 6m5 5v6m4-6v6"/></svg></button><?php endif; ?></div></td></tr><?php endforeach; ?>
           </tbody></table></div>
         </div>
-        <?php renderPortalPagination($feedbackHistoryTotal, $feedbackHistoryPage, $feedbackHistoryPages, $feedbackHistoryPerPage, $allowedFeedbackPageSizes, ['section' => 'feedback-history']); ?>
+        <?php renderPortalPagination($feedbackHistoryTotal, $feedbackHistoryPage, $feedbackHistoryPages, $feedbackHistoryPerPage, $allowedFeedbackPageSizes, ['section' => 'feedback-history', 'q' => $feedbackSearch, 'date' => $feedbackDate, 'status' => $feedbackStatusFilter, 'visibility' => $feedbackVisibilityFilter]); ?>
       <?php endif; ?>
     <?php elseif ($section === 'account'): ?>
       <div class="profile-settings portal-profile-settings">
@@ -393,5 +454,6 @@ $weeklyPath = 'M' . str_replace(' ', ' L', $weeklyPoints);
     <footer class="portal-site-footer"><span>&copy; <?php echo date('Y'); ?> Patan Nistha Campus. All Rights Reserved. | College Online Feedback System</span></footer>
   </main>
   <script src="../portal_feedback_form.js"></script>
+  <?php if (isset($_GET['embed'], $_GET['saved'])): ?><script>window.parent.postMessage({type:'portal-feedback-saved'}, window.location.origin);</script><?php endif; ?>
 </body>
 </html>

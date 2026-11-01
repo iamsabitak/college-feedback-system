@@ -1,6 +1,7 @@
 <?php
 require __DIR__ . '/includes/auth.php';
 require __DIR__ . '/includes/db.php';
+require_once __DIR__ . '/../portal_notifications.php';
 
 $sidebarStaffStmt = $pdo->prepare('SELECT username, full_name, email FROM portal_users WHERE id = :id AND role = \'staff\' LIMIT 1');
 $sidebarStaffStmt->execute([':id' => (int) $_SESSION['staff_id']]);
@@ -75,6 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $error === '') {
         ':email' => $email,
         ':password_hash' => $hash,
       ]);
+      notifyAllAdministrators($pdo, 'student_approval', 'Student account awaiting approval', $fullName . ' has been created by a staff member and needs approval.');
       $pdo->commit();
       $message = 'Student account sent for administrator approval. The student can sign in after approval.';
     } catch (Throwable $e) {
@@ -144,7 +146,6 @@ $approvedStudentCount = count(array_filter($users, static function ($user) {
         <p>Create a portal account and send it for administrator approval. Students can sign in after approval.</p>
       </div>
       <?php if ($message): ?><div class="alert alert-success"><?php echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
-      <?php if ($error): ?><div class="alert alert-error"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
       <div class="manage-users-actions"><div class="account-summary-grid"><div><span>Total students</span><strong><?php echo $studentCount; ?></strong></div><div><span>Awaiting approval</span><strong><?php echo $pendingApprovalCount; ?></strong></div><div><span>Approved</span><strong><?php echo $approvedStudentCount; ?></strong></div></div><button type="button" class="btn btn-primary" data-open-student-dialog>Create student account</button></div>
     </section>
 
@@ -153,23 +154,24 @@ $approvedStudentCount = count(array_filter($users, static function ($user) {
         <div><span class="page-kicker">Student access</span><h2 id="studentIdentityTitle">Create student account</h2><p>The account will be sent for administrator approval.</p></div>
         <button type="button" class="dialog-close" data-close-student-dialog aria-label="Close dialog">&times;</button>
       </div>
-      <form method="POST" class="submission-form two-column-form">
+      <?php if ($error): ?><div class="alert alert-error" role="alert"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
+      <form method="POST" class="submission-form two-column-form" data-confirm data-confirm-title="Create student account?" data-confirm-message="The new student account will be sent to an administrator for approval." data-confirm-label="Create account">
         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
         <div class="field">
           <label for="student_id">Student ID</label>
-          <input type="text" id="student_id" name="student_id" maxlength="30" required>
+          <input type="text" id="student_id" name="student_id" maxlength="30" value="<?php echo htmlspecialchars($_POST['student_id'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" required>
         </div>
         <div class="field">
           <label for="full_name">Full name</label>
-          <input type="text" id="full_name" name="full_name" maxlength="100" required>
+          <input type="text" id="full_name" name="full_name" maxlength="100" value="<?php echo htmlspecialchars($_POST['full_name'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" required>
         </div>
         <div class="field">
           <label for="username">Username</label>
-          <input type="text" id="username" name="username" maxlength="60" required>
+          <input type="text" id="username" name="username" maxlength="60" value="<?php echo htmlspecialchars($_POST['username'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" required>
         </div>
         <div class="field">
           <label for="email">Email</label>
-          <input type="email" id="email" name="email" maxlength="100" required>
+          <input type="email" id="email" name="email" maxlength="100" value="<?php echo htmlspecialchars($_POST['email'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" required>
         </div>
         <div class="field">
           <label for="password">Password</label>
@@ -182,7 +184,7 @@ $approvedStudentCount = count(array_filter($users, static function ($user) {
       </form>
     </dialog>
 
-    <section class="content-card">
+    <section class="content-card student-directory-heading">
       <div class="student-table-heading"><div><span class="page-kicker">Directory</span><h2>Student accounts</h2></div><label class="student-search"><span class="sr-only">Search student accounts</span><input type="search" placeholder="Search students" data-student-filter></label></div>
     </section>
     <div class="list-table-card pagination-contained">
@@ -201,10 +203,10 @@ $approvedStudentCount = count(array_filter($users, static function ($user) {
             <?php foreach ($users as $user): ?>
               <tr data-student-row>
                 <td><?php echo htmlspecialchars((string) ($user['student_id'] ?? '-'), ENT_QUOTES, 'UTF-8'); ?></td>
-                <td><?php echo htmlspecialchars($user['full_name'], ENT_QUOTES, 'UTF-8'); ?></td>
+                <td><span class="student-name-cell"><span class="student-initials" aria-hidden="true"><?php echo htmlspecialchars(strtoupper(substr($user['full_name'], 0, 1) . substr(strstr($user['full_name'], ' ') ?: '', 1, 1)), ENT_QUOTES, 'UTF-8'); ?></span><strong><?php echo htmlspecialchars($user['full_name'], ENT_QUOTES, 'UTF-8'); ?></strong></span></td>
                 <td><?php echo htmlspecialchars($user['username'], ENT_QUOTES, 'UTF-8'); ?></td>
                 <td><?php echo htmlspecialchars($user['email'], ENT_QUOTES, 'UTF-8'); ?></td>
-                <td><?php echo htmlspecialchars(ucfirst((string) ($user['approval_status'] ?? 'approved')), ENT_QUOTES, 'UTF-8'); ?></td>
+                <?php $approval = (string) ($user['approval_status'] ?? 'approved'); ?><td><span class="student-approval student-approval-<?php echo htmlspecialchars($approval, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars(ucfirst($approval), ENT_QUOTES, 'UTF-8'); ?></span></td>
               </tr>
             <?php endforeach; ?>
           </tbody>
@@ -227,6 +229,7 @@ $approvedStudentCount = count(array_filter($users, static function ($user) {
   </main>
 <script>
 const studentIdentityDialog = document.getElementById('studentIdentityDialog');
+<?php if ($error): ?>studentIdentityDialog?.showModal();<?php endif; ?>
 document.querySelector('[data-open-student-dialog]')?.addEventListener('click', () => studentIdentityDialog.showModal());
 document.querySelectorAll('[data-close-student-dialog]').forEach((button) => {
   button.addEventListener('click', () => studentIdentityDialog.close());
@@ -272,9 +275,6 @@ studentPageButtons.forEach((button) => button.addEventListener('click', () => {
   renderStudentAccounts();
 }));
 renderStudentAccounts();
-<?php if ($error): ?>
-studentIdentityDialog?.showModal();
-<?php endif; ?>
 </script>
 </body>
 </html>

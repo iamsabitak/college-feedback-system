@@ -260,7 +260,7 @@ include 'includes/header.php';
       <div><h3 id="accountModalTitle">Add account</h3></div>
       <button type="button" class="modal-close" data-close-account-modal aria-label="Close account form">&times;</button>
     </div>
-    <form id="accountForm">
+    <form id="accountForm" data-confirm data-confirm-title="Save account?" data-confirm-message="The account details will be created or updated." data-confirm-label="Save account">
       <input type="hidden" name="id" value="">
       <div class="field">
         <label for="account_role">Category</label>
@@ -512,7 +512,8 @@ document.querySelectorAll('[data-account-action]').forEach((button) => {
         });
       return;
     }
-    if (action === 'delete' && !confirm('Delete this account? This action cannot be undone.')) {
+    if (action === 'delete') {
+      window.openActionConfirmation({ title: 'Delete account?', message: 'This account will be permanently deleted.', confirmLabel: 'Delete', danger: true }, function () { handleAccountAction('delete', id); });
       return;
     }
     if (action === 'toggle_status') {
