@@ -1,6 +1,6 @@
 <?php
 /**
- * Configures PHPMailer and sends public contact emails.
+ * Configures PHPMailer for administrator password-recovery emails.
  *
  * Application-owned logic for includes/mailer.php.
  */
@@ -29,7 +29,6 @@ function otp_local_smtp_app_password(): string
         ? trim($config['app_password'])
         : '';
 }
-
 function otp_smtp_app_password(): string
 {
     $password = getenv('OTP_SMTP_APP_PASSWORD');
@@ -82,36 +81,3 @@ function send_otp_email(string $to, string $otpCode, string $purpose): bool
     }
 }
 
-function send_contact_email
-// This helper creates the configured Gmail SMTP message and returns whether delivery succeeded.
-(string $replyToName, string $replyToEmail, string $subject, string $message): bool
-{
-    $autoload = dirname(__DIR__, 2) . '/vendor/autoload.php';
-    if (!otp_mailer_ready()) {
-        error_log('Contact email not sent: configure PHPMailer and OTP_SMTP_APP_PASSWORD.');
-        return false;
-    }
-    require_once $autoload;
-    try {
-        $mail = new PHPMailer\PHPMailer\PHPMailer(true);
-        $mail->isSMTP();
-        $mail->Host = 'smtp.gmail.com';
-        $mail->SMTPAuth = true;
-        $mail->Username = OTP_SMTP_USERNAME;
-        $mail->Password = otp_smtp_app_password();
-        $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
-        $mail->Port = 587;
-        $mail->CharSet = 'UTF-8';
-        $mail->setFrom(OTP_SMTP_USERNAME, 'College Feedback System Contact Form');
-        $mail->addAddress(OTP_SMTP_USERNAME);
-        $mail->addReplyTo($replyToEmail, $replyToName);
-        $mail->isHTML(false);
-        $mail->Subject = 'Contact form: ' . str_replace(["\r", "\n"], ' ', $subject);
-        $mail->Body = "Name: {$replyToName}\r\nEmail: {$replyToEmail}\r\nSubject: {$subject}\r\n\r\nMessage:\r\n{$message}";
-        $mail->send();
-        return true;
-    } catch (Throwable $e) {
-        error_log('Contact email failed: ' . $e->getMessage());
-        return false;
-    }
-}

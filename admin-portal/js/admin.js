@@ -742,6 +742,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let entries = [];
     let seenEntryIds = new Set();
     let notificationFilter = 'all';
+    let previousUnreadCount = null;
     try {
       const stored = sessionStorage.getItem(markerKey);
       if (stored !== null && /^\d+$/.test(stored)) lastSeen = Number(stored);
@@ -765,14 +766,15 @@ document.addEventListener('DOMContentLoaded', function () {
       detailModal.dataset.feedbackId = String(feedbackId);
       const rating = Number(entry.rating) || 0;
       detailType.textContent = entry.submitter_type;
-      detailType.className = 'badge ' + ({ 'Student': 'badge-student', 'Teacher & Staff': 'badge-staff', 'Visitor & Outsider': 'badge-visitor', 'Public': 'badge-visitor' }[entry.submitter_type] || '');
+      detailType.className = 'badge ' + ({ 'Student': 'badge-student', 'Teacher & Staff': 'badge-staff' }[entry.submitter_type] || '');
       document.getElementById('feedbackModalTitle').textContent = entry.display_name || 'Feedback Submission';
       document.getElementById('feedbackModalDate').textContent = 'Submitted ' + entry.submit_date;
       document.getElementById('feedbackModalCategory').textContent = entry.category;
       document.getElementById('feedbackModalRating').textContent = '★'.repeat(rating) + '☆'.repeat(5 - rating) + '  ' + rating + ' out of 5 stars';
       document.getElementById('feedbackModalMessage').textContent = entry.message || '';
+      clearFeedbackModalExtensions();
       document.getElementById('feedbackModalAnonymity').textContent = entry.is_anonymous
-        ? 'Submitted anonymously — no name was collected or stored.'
+        ? 'Anonymous. The name is hidden in standard feedback details.'
         : 'Submitted with name: ' + (entry.submitter_name || '—');
       detailModal.classList.add('open');
       const closeButton = detailModal.querySelector('[data-feedback-modal-close]');
@@ -803,15 +805,15 @@ document.addEventListener('DOMContentLoaded', function () {
           item.appendChild(dot);
         }
         const type = document.createElement('span');
-        type.className = 'badge ' + ({ 'Student': 'badge-student', 'Teacher & Staff': 'badge-staff', 'Visitor & Outsider': 'badge-visitor', 'Public': 'badge-visitor' }[entry.submitter_type] || '');
+        type.className = 'badge ' + ({ 'Student': 'badge-student', 'Teacher & Staff': 'badge-staff', 'System': 'badge-system' }[entry.submitter_type] || 'badge-system');
         type.textContent = entry.submitter_type;
         const detail = document.createElement('span');
         detail.className = 'notification-item-detail';
         const title = document.createElement('strong');
-        title.textContent = entry.category;
+        title.textContent = entry.title || entry.category || 'Notification';
         const meta = document.createElement('span');
         meta.className = 'notification-item-meta';
-        meta.textContent = '★'.repeat(entry.rating) + ' · ' + relativeTime(entry.submit_date);
+        meta.textContent = (entry.rating ? '★'.repeat(entry.rating) + ' · ' : '') + relativeTime(entry.submit_date);
         detail.append(title, meta);
         item.append(type, detail);
         item.addEventListener('click', async function () {
@@ -829,7 +831,7 @@ document.addEventListener('DOMContentLoaded', function () {
               showToast(error.message, 'error');
             }
           }
-          openNotificationDetail(entry);
+          if (entry.feedback_id) openNotificationDetail(entry);
         });
         notificationList.appendChild(item);
       });
@@ -839,6 +841,7 @@ document.addEventListener('DOMContentLoaded', function () {
       notificationCount.textContent = unread > 99 ? '99+' : String(unread);
       notificationCount.hidden = unread === 0;
       notificationToggle.setAttribute('aria-label', unread ? 'Notifications, ' + unread + ' unread' : 'Notifications');
+      previousUnreadCount = unread;
       if (animate && unread) {
         notificationCount.classList.remove('notification-pop');
         notificationToggle.querySelector('.notification-bell-icon').classList.remove('notification-ring');
@@ -877,7 +880,11 @@ document.addEventListener('DOMContentLoaded', function () {
         newEntries.forEach(function (entry) { seenEntryIds.add(entry.notification_id); });
         entries = data.entries || [];
         addEntries(newEntries);
+        const unreadBeforePoll = previousUnreadCount;
         setUnreadCount(data.unread_count, newEntries.length > 0);
+        if (unreadBeforePoll !== null && Number(data.unread_count) > unreadBeforePoll && newEntries.length > 0) {
+          showToast(newEntries.length === 1 ? 'New admin notification received.' : newEntries.length + ' new admin notifications received.', 'success');
+        }
         if (notificationTotal) notificationTotal.textContent = 'All feedback updates';
         lastSeen = latestId;
         try { sessionStorage.setItem(markerKey, String(lastSeen)); } catch (error) {}
@@ -937,7 +944,7 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     });
     pollNotifications();
-    window.setInterval(pollNotifications, 12000);
+    window.setInterval(pollNotifications, 6000);
   }
 
   /* ---------- Delete confirmation modal (Section 6.2, 13: delete requires confirmation) ---------- */
@@ -973,8 +980,43 @@ document.addEventListener('DOMContentLoaded', function () {
     category: document.getElementById('feedbackModalCategory'),
     rating: document.getElementById('feedbackModalRating'),
     message: document.getElementById('feedbackModalMessage'),
-    anonymity: document.getElementById('feedbackModalAnonymity')
+    anonymity: document.getElementById('feedbackModalAnonymity'),
+    feedbackTitle: document.getElementById('feedbackModalFeedbackTitle'),
+    programBlock: document.getElementById('feedbackModalProgramBlock'),
+    program: document.getElementById('feedbackModalProgram'),
+    staffBlock: document.getElementById('feedbackModalStaffBlock'),
+    staffDetails: document.getElementById('feedbackModalStaffDetails'),
+    urgencyBlock: document.getElementById('feedbackModalUrgencyBlock'),
+    urgency: document.getElementById('feedbackModalUrgency'),
+    satisfactionLabel: document.getElementById('feedbackModalSatisfactionLabel'),
+    satisfaction: document.getElementById('feedbackModalSatisfaction'),
+    followUp: document.getElementById('feedbackModalFollowUp'),
+    solutionBlock: document.getElementById('feedbackModalSolutionBlock'),
+    solution: document.getElementById('feedbackModalSolution'),
+    improvementsBlock: document.getElementById('feedbackModalImprovementsBlock'),
+    improvements: document.getElementById('feedbackModalImprovements'),
+    attachmentBlock: document.getElementById('feedbackModalAttachmentBlock'),
+    attachment: document.getElementById('feedbackModalAttachment')
   };
+  function clearFeedbackModalExtensions() {
+    feedbackFields.satisfactionLabel.textContent = 'Overall satisfaction';
+    feedbackFields.feedbackTitle.textContent = '';
+    feedbackFields.programBlock.hidden = true;
+    feedbackFields.program.textContent = '';
+    feedbackFields.staffBlock.hidden = true;
+    feedbackFields.staffDetails.textContent = '';
+    feedbackFields.urgencyBlock.hidden = true;
+    feedbackFields.urgency.textContent = '';
+    feedbackFields.satisfaction.textContent = '';
+    feedbackFields.followUp.textContent = '';
+    feedbackFields.solutionBlock.hidden = true;
+    feedbackFields.solution.textContent = '';
+    feedbackFields.improvementsBlock.hidden = true;
+    feedbackFields.improvements.textContent = '';
+    feedbackFields.attachmentBlock.hidden = true;
+    feedbackFields.attachment.removeAttribute('href');
+    feedbackFields.attachment.textContent = '';
+  }
   function applyFeedbackModalEntry(entry) {
     const anonymous = document.getElementById('feedbackModalAnonymous');
     const status = document.getElementById('feedbackModalStatus');
@@ -984,12 +1026,38 @@ document.addEventListener('DOMContentLoaded', function () {
     const rating = Number(entry.rating) || 0;
     feedbackFields.title.textContent = entry.display_name || (entry.is_anonymous ? 'Anonymous Submission' : 'Unnamed');
     feedbackFields.type.textContent = entry.submitter_type;
-    feedbackFields.type.className = 'badge ' + ({ 'Student': 'badge-student', 'Teacher & Staff': 'badge-staff', 'Visitor & Outsider': 'badge-visitor', 'Public': 'badge-visitor' }[entry.submitter_type] || '');
+    feedbackFields.type.className = 'badge ' + ({ 'Student': 'badge-student', 'Teacher & Staff': 'badge-staff' }[entry.submitter_type] || '');
     feedbackFields.date.textContent = 'Submitted ' + entry.submit_date;
     feedbackFields.category.textContent = entry.category;
     feedbackFields.rating.textContent = '★'.repeat(rating) + '☆'.repeat(5 - rating) + '  ' + rating + ' out of 5 stars';
     feedbackFields.message.textContent = entry.message || '';
-    feedbackFields.anonymity.textContent = entry.is_anonymous ? 'Submitted anonymously — no name was collected or stored.' : 'Submitted with name: ' + (entry.submitter_name || '—');
+    clearFeedbackModalExtensions();
+    feedbackFields.anonymity.textContent = entry.is_anonymous
+      ? (entry.account_linked ? 'Anonymous. Your name is hidden in standard feedback details; this portal entry remains linked to an account for tracking.' : 'Anonymous. No submitter name is shown in standard feedback details.')
+      : 'Submitted with name: ' + (entry.submitter_name || '—');
+    feedbackFields.feedbackTitle.textContent = entry.feedback_title || 'Not provided';
+    feedbackFields.programBlock.hidden = !entry.department_faculty;
+    feedbackFields.program.textContent = entry.department_faculty ? entry.department_faculty + (entry.semester_year ? ' · ' + entry.semester_year : '') : '';
+    feedbackFields.staffBlock.hidden = !entry.staff_department && !entry.staff_role;
+    feedbackFields.staffDetails.textContent = [entry.staff_department, entry.staff_role].filter(Boolean).join(' · ');
+    feedbackFields.urgencyBlock.hidden = !entry.urgency_level;
+    feedbackFields.urgency.textContent = entry.urgency_level || '';
+    const overallSatisfaction = Number(entry.overall_satisfaction) || 0;
+    feedbackFields.satisfactionLabel.textContent = entry.submitter_type === 'Teacher & Staff' ? 'Overall workplace satisfaction' : 'Overall satisfaction';
+    feedbackFields.satisfaction.textContent = overallSatisfaction ? overallSatisfaction + ' out of 5' : 'Not provided';
+    feedbackFields.followUp.textContent = Number(entry.follow_up_required) === 1 ? 'Yes — response requested using account contact details where permitted.' : 'No';
+    feedbackFields.solutionBlock.hidden = !entry.preferred_solution;
+    feedbackFields.solution.textContent = entry.preferred_solution || '';
+    feedbackFields.improvementsBlock.hidden = !entry.suggested_improvements;
+    feedbackFields.improvements.textContent = entry.suggested_improvements || '';
+    feedbackFields.attachmentBlock.hidden = !entry.attachment_url;
+    if (entry.attachment_url) {
+      feedbackFields.attachment.href = entry.attachment_url;
+      feedbackFields.attachment.textContent = entry.attachment_name || 'Download attachment';
+    } else {
+      feedbackFields.attachment.removeAttribute('href');
+      feedbackFields.attachment.textContent = '';
+    }
     if (anonymous) anonymous.hidden = !entry.is_anonymous;
     if (status) { status.textContent = entry.status || 'New'; status.className = 'badge badge-' + String(entry.status || 'New').toLowerCase(); }
     if (statusSelect) statusSelect.value = entry.status || 'New';
@@ -1015,13 +1083,12 @@ document.addEventListener('DOMContentLoaded', function () {
       feedbackFields.type.className = 'badge ' + ({
         'Student': 'badge-student',
         'Teacher & Staff': 'badge-staff',
-        'Visitor & Outsider': 'badge-visitor',
-        'Public': 'badge-visitor'
       }[btn.dataset.feedbackType] || '');
       feedbackFields.date.textContent = 'Submitted ' + btn.dataset.feedbackDate;
       feedbackFields.category.textContent = btn.dataset.feedbackCategory;
       feedbackFields.rating.textContent = '★'.repeat(rating) + '☆'.repeat(5 - rating) + '  ' + rating + ' out of 5 stars';
       feedbackFields.message.textContent = btn.dataset.feedbackMessage;
+      clearFeedbackModalExtensions();
       feedbackFields.anonymity.textContent = btn.dataset.feedbackAnonymity;
       feedbackModal.dataset.feedbackId = String(btn.dataset.feedbackId);
       feedbackModal.classList.add('open');

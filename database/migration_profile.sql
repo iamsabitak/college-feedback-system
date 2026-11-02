@@ -13,6 +13,13 @@ PREPARE profile_stmt FROM @profile_sql;
 EXECUTE profile_stmt;
 DEALLOCATE PREPARE profile_stmt;
 
+-- Give the seeded admin a sign-in email on upgraded installations if available.
+SET @default_admin_email_available = (
+  SELECT COUNT(*) = 0 FROM admin WHERE email = 'admin@example.com'
+);
+UPDATE admin SET email = 'admin@example.com'
+WHERE username = 'admin' AND (email IS NULL OR email = '') AND @default_admin_email_available = 1;
+
 SET @has_phone = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
   WHERE TABLE_SCHEMA = @profile_schema AND TABLE_NAME = 'admin' AND COLUMN_NAME = 'phone');
 SET @profile_sql = IF(@has_phone = 0,

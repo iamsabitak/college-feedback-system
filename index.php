@@ -1,151 +1,166 @@
-<?php
-/**
- * Landing page that links to the public and administrator portals.
- *
- * Application-owned logic for index.php.
- */
-// Root landing page: keep this independent from the two portal layouts.
-?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="College Online Feedback System portal selection page.">
-  <title>College Online Feedback System</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600;6..72,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="icon" type="image/svg+xml" href="assets/logo.svg">
-  <style>
-    :root { --navy:#1b2a41; --navy-deep:#101a2b; --moss:#4a6b57; --moss-light:#e8efe9; --marigold:#e0942c; --paper:#faf8f4; --ink-soft:#5b6169; --line:#e3ddd0; --white:#fff; }
-    * { box-sizing:border-box; }
-    body { min-height:100vh; margin:0; font-family:Inter,Arial,sans-serif; color:var(--navy); background:linear-gradient(135deg,#f8fafb 0%,#f0f4f2 50%,#ede8e2 100%); }
-    .shell { width:min(1200px,calc(100% - 48px)); margin:auto; }
-    header { display:flex; align-items:center; justify-content:space-between; padding:28px 0; animation:slideDown .6s ease-out; }
-    @keyframes slideDown { from { opacity:0; transform:translateY(-20px); } to { opacity:1; transform:translateY(0); } }
-    .brand { display:flex; align-items:center; gap:12px; font-family:Newsreader,Georgia,serif; font-size:19px; font-weight:700; }
-    .brand-mark { display:grid; width:45px; height:45px; place-items:center; overflow:hidden; border-radius:12px; background:linear-gradient(135deg,var(--navy) 0%,var(--navy-deep) 100%); color:var(--white); font-size:15px; box-shadow:0 8px 20px rgba(27,42,65,.25); transition:all .3s ease; }
-    .brand-mark:hover { transform:scale(1.08) rotate(5deg); box-shadow:0 12px 28px rgba(27,42,65,.35); }
-    .brand-logo { display:block; width:100%; height:100%; object-fit:cover; }
-    .help-link { color:var(--ink-soft); font-size:14px; font-weight:600; text-decoration:none; transition:all .3s ease; position:relative; display:flex; align-items:center; gap:6px; }
-    .help-link i { transition:transform .3s ease; }
-    .help-link::after { content:''; position:absolute; bottom:-3px; left:0; width:0; height:2px; background:var(--moss); transition:width .3s ease; }
-    .help-link:hover { color:var(--navy); }
-    .help-link:hover i { transform:translateX(3px); }
-    .help-link:hover::after { width:100%; }
-    main { display:grid; grid-template-columns:1.1fr .9fr; gap:80px; align-items:center; min-height:calc(100vh - 180px); padding:60px 0 80px; animation:fadeIn .8s ease-out .2s both; }
-    @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
-    .eyebrow { display:inline-flex; align-items:center; gap:8px; padding:10px 16px; border-radius:99px; background:rgba(74,107,87,.1); color:var(--moss); font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; border:1px solid rgba(74,107,87,.2); }
-    .eyebrow i { font-size:12px; }
-    h1 { max-width:680px; margin:24px 0 0; font-family:Newsreader,Georgia,serif; font-size:clamp(48px,6vw,76px); font-weight:700; line-height:1.1; letter-spacing:-.025em; color:var(--navy-deep); }
-    .intro { max-width:600px; margin:20px 0 0; color:var(--ink-soft); font-size:16px; line-height:1.8; }
-    .trust { display:flex; flex-wrap:wrap; gap:28px; margin-top:36px; }
-    .trust-item { display:flex; align-items:center; gap:8px; color:var(--moss); font-size:13px; font-weight:600; }
-    .trust-item i { font-size:16px; opacity:.8; }
-    .choices { display:grid; gap:20px; margin-top:12px; }
-    .portal-card { display:flex; align-items:stretch; position:relative; border:none; border-radius:18px; background:var(--white); color:inherit; text-decoration:none; box-shadow:0 12px 40px rgba(16,26,43,.1); transition:all .35s cubic-bezier(.25,.46,.45,.94); overflow:hidden; }
-    .card-icon { display:flex; align-items:center; justify-content:center; width:100px; min-width:100px; background:linear-gradient(135deg,var(--moss) 0%,#3d5946 100%); color:var(--white); font-size:42px; transition:all .35s ease; }
-    .portal-card.admin .card-icon { background:linear-gradient(135deg,var(--navy) 0%,var(--navy-deep) 100%); }
-    .card-content { flex:1; padding:32px 36px; display:flex; flex-direction:column; justify-content:center; }
-    .card-label { color:var(--moss); font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; display:block; margin-bottom:8px; opacity:.8; }
-    .admin .card-label { color:var(--marigold); }
-    .portal-card h2 { margin:0 0 8px; font-family:Newsreader,Georgia,serif; font-size:26px; line-height:1.2; font-weight:700; }
-    .portal-card p { margin:0; color:var(--ink-soft); font-size:15px; line-height:1.65; }
-    .admin p { color:#7a8799; }
-    .card-arrow { display:none; }
-    .card-link { display:inline-flex; align-items:center; gap:6px; margin-top:16px; color:var(--moss); font-size:14px; font-weight:600; text-decoration:none; position:relative; transition:all .3s ease; width:fit-content; }
-    .card-link i { transition:transform .3s ease, color .3s ease; }
-    .card-link::after { content:''; position:absolute; bottom:-3px; left:0; width:100%; height:2px; background:var(--moss); transform:scaleX(0); transform-origin:left; transition:transform .3s ease; }
-    .card-link:hover::after { transform:scaleX(1); }
-    .card-link:hover i { transform:translateX(3px); color:var(--moss); }
-    .admin .card-link { color:var(--marigold); }
-    .admin .card-link i { color:var(--marigold); }
-    .admin .card-link::after { background:var(--marigold); }
-    .admin .card-link:hover { color:var(--marigold); }
-    .admin .card-link:hover i { transform:translateX(3px); color:var(--marigold); }
-    .admin .card-link:hover::after { transform:scaleX(1); }
-    .portal-card:hover { transform:translateY(-8px); box-shadow:0 28px 60px rgba(16,26,43,.18); }
-    .portal-card:hover .card-icon { transform:scale(1.1); }
-    footer { padding:0 0 28px; color:var(--ink-soft); font-size:12px; animation:slideUp .6s ease-out .4s both; }
-    @keyframes slideUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
-    @media (max-width:760px) { 
-      .shell { width:min(100% - 34px,560px); } 
-      header { padding:18px 0; } 
-      .help-link { display:none; } 
-      main { grid-template-columns:1fr; gap:40px; min-height:auto; padding:55px 0; } 
-      h1 { font-size:48px; margin-top:16px; } 
-      .intro { font-size:15px; margin-top:14px; } 
-      .choices { gap:16px; }
-      .portal-card { flex-direction:column; }
-      .card-icon { width:100%; min-width:100%; height:80px; font-size:36px; }
-      .card-content { padding:24px 20px; }
-      .card-arrow { display:none; }
-    }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>College Online Feedback System – Patan Nistha Campus</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:wght@600;700&display=swap" rel="stylesheet">
+<link rel="icon" type="image/svg+xml" href="assets/logo.svg">
+<style>
+:root{--navy:#0f1a35;--navy2:#16254a;--green:#3f6a52;--green2:#8fc7a6;--gold:#f2b441;--bg:#f4f2ed;--card:#fff;--ink:#14213d;--muted:#5b6478;--line:#e4e0d6;--chip:#e3efe8;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0b1224;--card:#15203b;--ink:#eef0f6;--muted:#a3adc4;--line:#27335a;--chip:#1f3a31;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0b1224;--card:#15203b;--ink:#eef0f6;--muted:#a3adc4;--line:#27335a;--chip:#1f3a31;color-scheme:dark}
+html{scroll-behavior:smooth;scroll-padding-top:90px}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 Inter,system-ui,sans-serif}
+h1,h2,h3{font-family:"Source Serif 4",Georgia,serif;margin:0;letter-spacing:-.015em}
+a{color:inherit;text-decoration:none}
+.wrap{max-width:1180px;margin:0 auto;padding:0 clamp(18px,4vw,32px)}
+/* nav */
+.nav{position:sticky;top:0;z-index:20;background:rgba(15,26,53,.92);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.08);color:#fff}
+.nav .wrap{display:flex;align-items:center;justify-content:space-between;height:72px;gap:16px}
+.brand{display:flex;align-items:center;gap:14px}
+.brand img{flex-shrink:0;object-fit:contain}
+.brand i{width:1px;height:34px;background:rgba(255,255,255,.18)}
+.brand small{display:block;font-size:11px;letter-spacing:.14em;color:var(--green2);font-weight:700}
+.brand b{font:700 17px "Source Serif 4",Georgia,serif}
+.links{display:flex;align-items:center;gap:26px;font-weight:600;font-size:14px}
+.links a:not(.btn):hover{color:var(--gold)}
+.btn{display:inline-flex;align-items:center;gap:10px;padding:12px 22px;border-radius:12px;font-weight:700;font-size:15px;transition:.15s;border:1.5px solid transparent}
+.btn.light{background:#f4f2ed;color:#14213d}.btn.light:hover{background:#fff;transform:translateY(-1px)}
+.btn.ghost{border-color:rgba(255,255,255,.28);color:#fff}.btn.ghost:hover{border-color:var(--gold);color:var(--gold)}
+.btn.lg{padding:17px 28px;font-size:16px;border-radius:14px}
+/* hero */
+.hero{background:radial-gradient(60% 75% at 78% 42%,rgba(63,106,82,.42),transparent 70%),radial-gradient(40% 50% at 10% 100%,rgba(242,180,65,.10),transparent 70%),linear-gradient(180deg,#0c1630,#111f40);color:#fff;position:relative;overflow:hidden}
+.hero .wrap{display:grid;grid-template-columns:1.05fr .95fr;gap:30px;align-items:center;padding-top:64px;padding-bottom:86px}
+.pill{display:inline-flex;align-items:center;gap:9px;border:1px solid rgba(255,255,255,.2);border-radius:99px;padding:8px 16px;font-size:12px;font-weight:700;letter-spacing:.1em;background:rgba(255,255,255,.05)}
+.pill:before{content:"";width:8px;height:8px;border-radius:50%;background:var(--green2);box-shadow:0 0 10px var(--green2)}
+h1{font-size:clamp(40px,6vw,72px);line-height:1.04;margin:22px 0 20px;font-weight:700}
+h1 em{font-style:normal;background:linear-gradient(90deg,var(--gold),var(--green2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.sub{font-size:18px;color:#b8c2da;max-width:560px;margin:0 0 30px}
+.cta{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:28px}
+.tags{display:flex;gap:10px;flex-wrap:wrap}
+.tags span{border:1px solid rgba(255,255,255,.22);border-radius:99px;padding:8px 16px;font-size:13.5px;font-weight:600}
+.art{width:100%;height:auto;filter:drop-shadow(0 30px 50px rgba(0,0,0,.35))}
+/* stats */
+.stats{background:linear-gradient(180deg,#111f40,var(--navy));color:#fff;border-top:1px solid rgba(255,255,255,.06)}
+.stats .wrap{display:grid;grid-template-columns:repeat(3,1fr);gap:0;padding-top:34px;padding-bottom:34px}
+.stat{padding:0 28px;border-left:1px solid rgba(255,255,255,.12)}.stat:first-child{border:0;padding-left:0}
+.stat b{display:block;font:700 40px/1.1 Inter,sans-serif}
+.stat span{color:#9fb0cf;font-weight:500;font-size:14px}
+/* sections */
+section.s{padding:84px 0 20px}
+.head{display:flex;justify-content:space-between;align-items:flex-end;gap:40px;margin-bottom:34px;flex-wrap:wrap}
+.eyebrow{font-size:12px;letter-spacing:.16em;font-weight:700;color:var(--green)}
+.head h2{font-size:clamp(30px,4vw,44px);margin-top:6px}
+.head p{max-width:480px;color:var(--muted);margin:0}
+.portals{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+.pc{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:30px;box-shadow:0 10px 30px rgba(20,33,61,.06);transition:.2s;display:flex;flex-direction:column}
+.pc:hover{transform:translateY(-4px);border-color:var(--green);box-shadow:0 18px 40px rgba(20,33,61,.12)}
+.ic{width:60px;height:60px;border-radius:16px;background:var(--green);display:grid;place-items:center;margin-bottom:22px}
+.pc .eyebrow{font-size:11px}.pc h3{font-size:28px;margin:4px 0 10px}
+.pc p{color:var(--muted);margin:0 0 20px}
+.pc ul{list-style:none;padding:0;margin:0 0 24px;display:grid;gap:8px;font-size:14.5px;font-weight:500}
+.pc li:before{content:"✓";color:var(--green);font-weight:800;margin-right:10px}
+.go{margin-top:auto;font-weight:700;color:var(--green);display:inline-flex;gap:8px;align-items:center}
+.pc:hover .go{gap:14px}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
+.step{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:28px}
+.num{width:48px;height:48px;border-radius:12px;background:var(--navy);color:#fff;font-weight:700;display:grid;place-items:center;margin-bottom:34px}
+.step h3{font:700 20px Inter,sans-serif;margin-bottom:8px}.step p{margin:0;color:var(--muted);font-size:14.5px}
+footer{margin-top:84px;background:var(--navy);color:#9fb0cf;font-size:14px}
+footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;padding-top:26px;padding-bottom:26px}
+@media(max-width:900px){.hero .wrap{grid-template-columns:1fr;padding-top:44px}.art{max-width:460px;margin:0 auto}.links a:not(.btn){display:none}.portals,.steps{grid-template-columns:1fr}.stats .wrap{grid-template-columns:1fr;gap:18px}.stat{border:0;padding:0}}
+@media(max-width:520px){.brand i,.brand small{display:none}.btn.lg{width:100%;justify-content:center}}
+</style>
 </head>
 <body>
-  <div class="shell">
-    <header>
-      <div class="brand"><span class="brand-mark"><img class="brand-logo" src="assets/logo.svg" alt=""></span><span>College Feedback</span></div>
-      <a class="help-link" href="public-portal/contact.php"><i class="fas fa-headset"></i>Need help? Contact us</a>
-    </header>
+<header class="nav"><div class="wrap">
+  <a class="brand" href="#top">
+    <img src="assets/logo.svg" width="40" height="40" alt="Patan Nistha Campus logo"/>
+    <i></i><div><small>PATAN NISTHA CAMPUS</small><b>College Online Feedback</b></div>
+  </a>
+  <nav class="links"><a href="#top">Home</a><a href="#portals">Portals</a><a href="#how">How it works</a><a class="btn light" href="#portals">Access Portal</a></nav>
+</div></header>
 
-    <main>
-      <section aria-labelledby="welcome-title">
-        <span class="eyebrow"><i class="fas fa-map-marker-alt"></i>Patan Nistha Campus</span>
-        <h1 id="welcome-title">Every voice matters in shaping our campus.</h1>
-        <p class="intro">Welcome to the College Online Feedback System for Patan Nistha Campus, an established institution in Balkumari, Gwarko, Lalitpur. Share your experience and help us improve continuously.</p>
-        <div class="trust" aria-label="Feedback portal benefits">
-          <div class="trust-item"><i class="fas fa-mask"></i>Anonymous option</div>
-          <div class="trust-item"><i class="fas fa-feather"></i>Simple to use</div>
-          <div class="trust-item"><i class="fas fa-graduation-cap"></i>BCA, BBS & MBS</div>
-        </div>
-      </section>
-
-      <section class="choices" aria-label="Choose a portal">
-        <div class="portal-card">
-          <div class="card-icon"><i class="fas fa-comments"></i></div>
-          <div class="card-content">
-            <span class="card-label">For students, staff & visitors</span>
-            <h2>Public Feedback Portal</h2>
-            <p>Tell us about courses, facilities, services, and your overall experience.</p>
-            <a href="public-portal/index.php" class="card-link">Explore Public Portal<i class="fas fa-arrow-right"></i></a>
-          </div>
-        </div>
-        <div class="portal-card">
-          <div class="card-icon"><i class="fas fa-user-graduate"></i></div>
-          <div class="card-content">
-            <span class="card-label">Student access</span>
-            <h2>Student Portal</h2>
-            <p>Track your submissions, review status, and recover passwords in one place.</p>
-            <a href="student-portal/login.php" class="card-link">Open Student Portal<i class="fas fa-arrow-right"></i></a>
-          </div>
-        </div>
-        <div class="portal-card">
-          <div class="card-icon"><i class="fas fa-briefcase"></i></div>
-          <div class="card-content">
-            <span class="card-label">Staff access</span>
-            <h2>Staff Portal</h2>
-            <p>Review active submissions and manage account access for members of the team.</p>
-            <a href="staff-portal/login.php" class="card-link">Open Staff Portal<i class="fas fa-arrow-right"></i></a>
-          </div>
-        </div>
-        <div class="portal-card admin">
-          <div class="card-icon"><i class="fas fa-lock"></i></div>
-          <div class="card-content">
-            <span class="card-label">Authorized staff only</span>
-            <h2>Administrator Dashboard</h2>
-            <p>Sign in to review, filter, and manage submitted feedback securely.</p>
-            <a href="admin-portal/login.php" class="card-link">Access Admin Portal<i class="fas fa-arrow-right"></i></a>
-          </div>
-        </div>
-      </section>
-    </main>
+<main id="top">
+<section class="hero"><div class="wrap">
+  <div>
+    <span class="pill">PATAN NISTHA CAMPUS</span>
+    <h1>Every voice matters in <em>shaping our campus.</em></h1>
+    <p class="sub">Welcome to the College Online Feedback System for Patan Nistha Campus, an established institution in Balkumari, Gwarko, Lalitpur. Share your experience and help us improve continuously.</p>
+    <div class="cta"><a class="btn light lg" href="student-portal/login.php">Student Portal <span>→</span></a><a class="btn ghost lg" href="staff-portal/login.php">Staff Portal</a></div>
+    <div class="tags"><span>Anonymous option</span><span>Simple to use</span><span>BCA, BBS &amp; MBS</span></div>
   </div>
-  <script>
-    // Only the link text is clickable, not the entire card
-  </script>
+  <svg class="art" viewBox="0 0 520 460" role="img" aria-label="Illustration of feedback cards, ratings and a graduation cap">
+    <defs>
+      <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8fc7a6"/><stop offset="1" stop-color="#3f6a52"/></linearGradient>
+      <linearGradient id="g2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f7cb6b"/><stop offset="1" stop-color="#e09a1e"/></linearGradient>
+      <symbol id="st" viewBox="0 0 24 24"><path d="M12 2l3 6.9 7.5.7-5.7 5 1.7 7.4L12 18l-6.5 4 1.7-7.4-5.7-5 7.5-.7z"/></symbol>
+    </defs>
+    <circle cx="260" cy="230" r="215" fill="none" stroke="rgba(255,255,255,.07)"/>
+    <circle cx="260" cy="230" r="165" fill="none" stroke="rgba(255,255,255,.07)"/>
+    <g transform="rotate(-8 260 230)">
+      <rect x="50" y="70" width="370" height="290" rx="38" fill="rgba(255,255,255,.07)" stroke="rgba(255,255,255,.14)"/>
+      <rect x="92" y="104" width="250" height="140" rx="24" fill="#0b1530" stroke="rgba(255,255,255,.1)"/>
+      <rect x="116" y="124" width="110" height="10" rx="5" fill="#8fc7a6" opacity=".7"/>
+      <rect x="116" y="158" width="62" height="62" rx="16" fill="url(#g1)"/>
+      <rect x="190" y="158" width="62" height="62" rx="16" fill="url(#g2)"/>
+      <rect x="264" y="158" width="62" height="62" rx="16" fill="#cfe5d8"/>
+      <path d="M135 180h24v18h-10l-6 6v-6h-8z" fill="#fff" opacity=".9"/>
+      <rect x="40" y="272" width="290" height="92" rx="24" fill="url(#g1)"/>
+      <rect x="54" y="284" width="262" height="68" rx="16" fill="none" stroke="rgba(255,255,255,.35)"/>
+      <g fill="#fff"><use href="#st" x="76" y="302" width="30" height="30"/><use href="#st" x="118" y="302" width="30" height="30"/><use href="#st" x="160" y="302" width="30" height="30"/><use href="#st" x="202" y="302" width="30" height="30"/></g>
+      <use href="#st" x="244" y="302" width="30" height="30" fill="#f2b441"/>
+    </g>
+    <g transform="rotate(9 400 330)">
+      <rect x="335" y="235" width="140" height="190" rx="22" fill="#fff"/>
+      <rect x="356" y="262" width="98" height="12" rx="6" fill="#d9deea"/><rect x="356" y="286" width="98" height="10" rx="5" fill="#e5e9f1"/><rect x="356" y="306" width="70" height="10" rx="5" fill="#e5e9f1"/>
+      <rect x="352" y="340" width="106" height="62" rx="14" fill="#d5ecdf"/>
+    </g>
+    <circle cx="415" cy="130" r="58" fill="rgba(63,106,82,.4)" stroke="rgba(143,199,166,.5)"/>
+    <path d="M415 98l38 15-38 15-38-15z" fill="#f2b441"/><path d="M392 128v16c14 9 32 9 46 0v-16l-23 9z" fill="#f7e2ad"/><path d="M448 118v26" stroke="#f2b441" stroke-width="4" stroke-linecap="round"/>
+  </svg>
+</div></section>
+
+<section class="stats"><div class="wrap">
+  <div class="stat"><b>3</b><span>Programs: BCA, BBS &amp; MBS</span></div>
+  <div class="stat"><b>2</b><span>Portals for students &amp; staff</span></div>
+  <div class="stat"><b>1</b><span>Place to share and track feedback</span></div>
+</div></section>
+
+<section class="s" id="portals"><div class="wrap">
+  <div class="head"><div><div class="eyebrow">CHOOSE YOUR PORTAL</div><h2>Where would you like to start?</h2></div>
+    <p>Sign in to the portal that fits your role and tell the college what is working and what could be better.</p></div>
+  <div class="portals">
+    <a class="pc" id="student" href="student-portal/login.php">
+      <div class="ic"><svg width="32" height="32" viewBox="0 0 24 24" fill="#fff"><path d="M12 3L1 9l4 2.2V16c0 1.7 3.1 3 7 3s7-1.3 7-3v-4.8l2-1.1V16h2V9zM12 12.5L5.6 9 12 5.5 18.4 9z"/></svg></div>
+      <div class="eyebrow">STUDENT ACCESS</div><h3>Student Portal</h3>
+      <p>Track your submissions, review status, and recover passwords in one place.</p>
+      <ul><li>Submit feedback on courses and facilities</li><li>Choose to stay anonymous</li><li>Follow review progress</li></ul>
+      <span class="go">Open Student Portal <span>→</span></span>
+    </a>
+    <a class="pc" id="staff" href="staff-portal/login.php">
+      <div class="ic"><svg width="32" height="32" viewBox="0 0 24 24" fill="#fff"><path d="M9 3a2 2 0 00-2 2v2H3a1 1 0 00-1 1v11a1 1 0 001 1h18a1 1 0 001-1V8a1 1 0 00-1-1h-4V5a2 2 0 00-2-2zm0 2h6v2H9zM4 13h6v1.5h4V13h6v6H4z"/></svg></div>
+      <div class="eyebrow">STAFF ACCESS</div><h3>Staff Portal</h3>
+      <p>Share workplace feedback, ideas and concerns, and follow up on what you have sent.</p>
+      <ul><li>Rate topics and workplace satisfaction</li><li>Identified or anonymous submissions</li><li>View your own feedback history</li></ul>
+      <span class="go">Open Staff Portal <span>→</span></span>
+    </a>
+  </div>
+</div></section>
+
+<section class="s" id="how"><div class="wrap">
+  <div class="head"><div><div class="eyebrow">HOW IT WORKS</div><h2>Built around your voice</h2></div>
+    <p>A simple three-step flow that keeps feedback moving from your message to a real improvement.</p></div>
+  <div class="steps">
+    <div class="step"><div class="num">01</div><h3>Share</h3><p>Pick a topic, rate your experience and describe it in your own words, with an anonymous option.</p></div>
+    <div class="step"><div class="num">02</div><h3>Review</h3><p>Authorized reviewers read each submission and act on it, with urgent items prioritized.</p></div>
+    <div class="step"><div class="num">03</div><h3>Track</h3><p>Follow the status of everything you have submitted from your own portal.</p></div>
+  </div>
+</div></section>
+</main>
+
 </body>
 </html>

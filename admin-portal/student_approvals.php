@@ -1,6 +1,7 @@
 <?php
 require 'includes/auth.php';
 require 'includes/db.php';
+require __DIR__ . '/../portal_pagination.php';
 
 $pageTitle = 'Student approvals';
 $active = 'student-approvals';
@@ -9,7 +10,11 @@ $status = trim((string) ($_GET['status'] ?? ''));
 if (!in_array($status, ['', 'pending', 'approved', 'rejected'], true)) {
     $status = '';
 }
-$perPage = 10;
+$allowedPageSizes = [10, 20, 50];
+$perPage = isset($_GET['per_page']) ? (int) $_GET['per_page'] : 10;
+if (!in_array($perPage, $allowedPageSizes, true)) {
+  $perPage = 10;
+}
 $page = max(1, (int) ($_GET['page'] ?? 1));
 $where = ['u.role = \'student\'', 'u.created_by_staff_id IS NOT NULL'];
 $params = [];
@@ -89,9 +94,9 @@ include 'includes/header.php';
   </div>
 </form>
 
-<div class="table-card">
-  <div class="table-wrap">
-    <table>
+<div class="table-card list-table-card pagination-contained">
+  <div class="table-wrap list-table-wrap">
+    <table class="list-table">
       <thead>
         <tr><th>Student ID</th><th>Name</th><th>Username</th><th>Email</th><th>Created by staff</th><th>Created</th><th>Approval</th><th>Action</th></tr>
       </thead>
@@ -112,7 +117,7 @@ include 'includes/header.php';
                 <?php if ($student['approval_status'] === 'pending'): ?>
                   <div class="row-actions">
                     <?php foreach (['approve' => 'Approve', 'reject' => 'Reject'] as $decision => $label): ?>
-                      <form method="POST" action="student_approval_action.php">
+                      <form method="POST" action="student_approval_action.php" data-confirm data-confirm-title="<?php echo $decision === 'approve' ? 'Approve student account?' : 'Reject student account?'; ?>" data-confirm-message="<?php echo $decision === 'approve' ? 'The student will be allowed to access the portal.' : 'The student account request will be rejected.'; ?>" data-confirm-label="<?php echo $label; ?>"<?php echo $decision === 'reject' ? ' data-confirm-danger=\"true\"' : ''; ?>>
                         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                         <input type="hidden" name="student_id" value="<?php echo (int) $student['id']; ?>">
                         <input type="hidden" name="decision" value="<?php echo $decision; ?>">
@@ -130,15 +135,7 @@ include 'includes/header.php';
       </tbody>
     </table>
   </div>
-  <div class="table-toolbar" style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 18px; border-top:1px solid var(--line); flex-wrap:wrap;">
-    <span><?php echo $total; ?> staff-created students · Page <?php echo $page; ?> of <?php echo $pages; ?> · 10 per page</span>
-    <div style="display:flex; gap:8px; align-items:center;">
-      <?php foreach (['First' => 1, 'Previous' => max(1, $page - 1), 'Next' => min($pages, $page + 1), 'Last' => $pages] as $label => $targetPage): ?>
-        <?php $disabled = in_array($label, ['First', 'Previous'], true) ? $page <= 1 : $page >= $pages; ?>
-        <a class="icon-btn" aria-label="<?php echo $label; ?> page" href="<?php echo htmlspecialchars('student_approvals.php?' . http_build_query($queryParams + ['page' => $targetPage]), ENT_QUOTES, 'UTF-8'); ?>" <?php echo $disabled ? 'aria-disabled="true" tabindex="-1"' : ''; ?>><?php echo ['First' => '«', 'Previous' => '‹', 'Next' => '›', 'Last' => '»'][$label]; ?></a>
-      <?php endforeach; ?>
-    </div>
-  </div>
+  <?php renderPortalPagination($total, $page, $pages, $perPage, $allowedPageSizes, ['search' => $search, 'status' => $status]); ?>
 </div>
 
 <?php include 'includes/footer.php'; ?>
