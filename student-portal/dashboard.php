@@ -46,6 +46,7 @@ if ($section === 'account') {
   [$accountError, $accountNotice] = processPortalAccountPost($pdo, $userId, $accountUserId, 'student', $user, $accountCsrf);
 }
 $passwordOtpPending = $_SESSION['portal_change_otp_student'] ?? null;
+$accountTab = $passwordOtpPending ? 'security' : $accountTab;
 $feedbackError = '';
 $editingFeedback = null;
 $feedbackFormValues = [];

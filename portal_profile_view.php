@@ -5,6 +5,7 @@ $portalRoleLabel = ucfirst((string) ($portalRole ?? 'Account'));
 $portalInitials = strtoupper(substr((string) ($portalAccount['full_name'] ?? $portalRoleLabel), 0, 2));
 $portalOtpActive = !empty($passwordOtpPending) && (int) ($passwordOtpPending['expires_at'] ?? 0) > time();
 ?>
+<?php if ($portalOtpActive): ?><script>window.portalProfileResendAt = <?php echo (int) ($passwordOtpPending['resend_at'] ?? 0) * 1000; ?>;</script><?php endif; ?>
 <div class="admin-profile-workspace portal-profile-workspace" data-portal-profile>
   <aside class="admin-profile-summary" aria-label="<?php echo htmlspecialchars($portalRoleLabel, ENT_QUOTES, 'UTF-8'); ?> account summary">
     <div class="admin-profile-avatar" aria-hidden="true"><?php echo htmlspecialchars($portalInitials ?: 'U', ENT_QUOTES, 'UTF-8'); ?></div>

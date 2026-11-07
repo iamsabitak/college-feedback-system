@@ -33,6 +33,19 @@ document.querySelectorAll('#otp_code').forEach(function (otpInput) {
     };
     updateTimer(); window.setInterval(updateTimer, 1000);
   }
+  var resendForm = document.querySelector('.otp-resend');
+  var resendButton = resendForm && resendForm.querySelector('button');
+  if (resendButton && window.portalOtpResendAt) {
+    var resendStatus = document.createElement('small');
+    resendStatus.className = 'resend-status-text';
+    resendButton.after(resendStatus);
+    var updateResend = function () {
+      var seconds = Math.max(0, Math.ceil((window.portalOtpResendAt - Date.now()) / 1000));
+      resendButton.disabled = seconds > 0;
+      resendStatus.textContent = seconds > 0 ? 'Resend code in ' + seconds + 's' : 'You can request a new code.';
+    };
+    updateResend(); window.setInterval(updateResend, 1000);
+  }
   form.addEventListener('submit', function (event) {
     if (!/^\d{6}$/.test(otpInput.value)) {
       event.preventDefault();
