@@ -1,4 +1,5 @@
 <?php
+session_name('college_feedback_student');
 session_start();
 require __DIR__ . '/includes/db.php';
 

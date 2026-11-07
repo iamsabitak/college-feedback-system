@@ -23,6 +23,16 @@ include 'includes/header.php';
 <div class="page-head">
   <div><h1>Profile Settings</h1></div>
 </div>
+<?php $adminInitials = strtoupper(substr((string) ($admin['username'] ?? 'Admin'), 0, 2)); ?>
+<div class="admin-profile-workspace">
+  <aside class="admin-profile-summary" aria-label="Administrator account summary">
+    <div class="admin-profile-avatar" aria-hidden="true"><?php echo htmlspecialchars($adminInitials ?: 'A', ENT_QUOTES, 'UTF-8'); ?></div>
+    <h2><?php echo htmlspecialchars($admin['username'] ?? 'Administrator', ENT_QUOTES, 'UTF-8'); ?></h2>
+    <p class="admin-profile-handle">@<?php echo htmlspecialchars($admin['username'] ?? 'admin', ENT_QUOTES, 'UTF-8'); ?></p>
+    <span class="admin-profile-role">Administrator account</span>
+    <dl><div><dt><svg aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>Email</dt><dd><?php echo htmlspecialchars($admin['email'] ?: 'Not set', ENT_QUOTES, 'UTF-8'); ?></dd></div><div><dt><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 4h3l2 5-2 1.5a15 15 0 0 0 5.5 5.5L15 14l5 2v3c0 1.1-.9 2-2 2C10.3 21 3 13.7 3 6c0-1.1.9-2 2-2Z"/></svg>Phone</dt><dd><?php echo htmlspecialchars($admin['phone'] ?: 'Not set', ENT_QUOTES, 'UTF-8'); ?></dd></div></dl>
+  </aside>
+  <div class="admin-profile-editor">
 <div class="profile-settings" data-profile-tabs>
   <div class="profile-tabs" role="tablist" aria-label="Profile settings">
     <button type="button" role="tab" id="profileDetailsTab" aria-controls="profileDetailsPanel" aria-selected="true" tabindex="0" class="profile-tab active" data-profile-tab="details">Profile Details</button>
@@ -71,5 +81,7 @@ include 'includes/header.php';
       </div>
     </details>
   </section>
+</div>
+  </div>
 </div>
 <?php include 'includes/footer.php'; ?>

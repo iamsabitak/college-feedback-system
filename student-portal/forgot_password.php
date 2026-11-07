@@ -1,6 +1,12 @@
 <?php
+session_name('college_feedback_student');
 session_start();
 require __DIR__ . '/includes/db.php';
+
+$portalRecoveryRole = 'student';
+$portalRecoveryLabel = 'Student Portal';
+require __DIR__ . '/../portal_recovery.php';
+exit;
 
 if (!empty($_SESSION['student_id'])) {
     header('Location: dashboard.php');
@@ -55,48 +61,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <link rel="icon" type="image/svg+xml" href="../assets/logo.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Newsreader:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/student.css">
+  <link rel="stylesheet" href="../admin-portal/css/admin.css">
 </head>
-<body class="portal-body">
-  <main class="portal-shell narrow-shell">
-    <section class="portal-panel single-panel">
-      <div class="portal-card">
-        <div class="portal-brand">
-          <span class="brand-mark"><img src="../assets/logo.svg" alt=""></span>
-          <div>
-            <strong>Reset Password</strong>
-            <small>Student Portal</small>
-          </div>
-        </div>
-
-        <div class="portal-header">
-          <h2>Forgot password?</h2>
-          <p>Enter the email address tied to your student account and we will generate a secure reset link.</p>
-        </div>
+<body class="login-body">
+  <main class="login-shell">
+    <section class="login-showcase" aria-label="College Feedback System"><div class="login-orb login-orb-one" aria-hidden="true"></div><div class="login-orb login-orb-two" aria-hidden="true"></div><div class="login-grid" aria-hidden="true"></div><div class="login-showcase-brand"><span class="brand-mark login-mark"><img class="brand-logo" src="../assets/logo.svg" alt=""></span><span>College Feedback<small>Patan Nistha Campus</small></span></div><div class="login-showcase-copy"><span class="login-eyebrow">College Feedback System · Student Portal</span><h1>Make your feedback count.</h1><p>Share feedback about campus life, review responses, and manage your account from one secure student workspace.</p><div class="showcase-rule"></div><span class="showcase-note">A private workspace for better campus decisions.</span></div><p class="login-copyright">&copy; <?php echo date('Y'); ?> Patan Nistha Campus</p></section>
+    <section class="login-panel"><div class="login-content recovery-content<?php echo $error ? ' has-error' : ''; ?>"><div class="login-brand"><span class="brand-mark"><img class="brand-logo" src="../assets/logo.svg" alt=""></span><span><strong>Student Portal</strong><small>College Feedback System</small></span></div><div class="login-title recovery-title"><span class="page-kicker">ACCOUNT RECOVERY</span><h1>Reset your password</h1><p>Enter your student email to receive a secure password reset link.</p></div>
 
         <?php if ($error): ?><div class="alert alert-error"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
-        <?php if ($notice): ?><div class="alert alert-success"><?php echo htmlspecialchars($notice, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
+        <?php if ($notice): ?><div class="otp-sent" role="status"><span class="otp-check" aria-hidden="true">✓</span><span><?php echo htmlspecialchars($notice, ENT_QUOTES, 'UTF-8'); ?></span></div><?php endif; ?>
         <?php if (!empty($_SESSION['student_reset_link'])): ?>
-          <div class="reset-link-box">
+          <div class="otp-config-notice">
             <strong>Reset link:</strong>
             <a href="<?php echo htmlspecialchars($_SESSION['student_reset_link'], ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($_SESSION['student_reset_link'], ENT_QUOTES, 'UTF-8'); ?></a>
           </div>
           <?php unset($_SESSION['student_reset_link']); ?>
         <?php endif; ?>
 
-        <form method="POST" class="portal-form">
+        <form method="POST" class="recovery-request-form">
           <div class="field">
             <label for="email">Email address</label>
             <input type="email" id="email" name="email" placeholder="student@example.com" required>
           </div>
-          <button type="submit" class="btn btn-primary btn-block">Send reset link</button>
+          <button type="submit" class="btn btn-primary btn-block login-submit">Send reset link</button>
         </form>
 
-        <div class="portal-inline top-space">
-          <a href="login.php">&larr; Back to sign in</a>
-        </div>
-      </div>
-    </section>
+        <p class="recovery-back"><a href="login.php">← Back to sign in</a></p>
+      </div></section>
   </main>
 </body>
 </html>

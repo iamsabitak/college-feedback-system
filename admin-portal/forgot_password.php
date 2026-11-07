@@ -4,6 +4,7 @@
  *
  * Application-owned logic for forgot_password.php.
  */
+session_name('college_feedback_admin');
 session_start();
 require 'includes/db.php';
 require 'includes/otp.php';
@@ -22,7 +23,7 @@ $prepareStep = static function (?int $adminId, string $identity, ?array $latest)
     return [
         'admin_id' => $adminId,
         'identity' => $identity,
-        'expires_at' => $latest ? (int) $latest['expires_epoch'] : $now + 60,
+        'expires_at' => $latest ? (int) $latest['expires_epoch'] : $now + 600,
         'resend_at' => $created + 60,
     ];
 };
@@ -63,7 +64,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     : null;
                 $pending = $prepareStep($pendingAdminId, $identity, $latest);
                 $_SESSION['forgot_otp'] = $pending;
-                $notice = 'If an account matches, an OTP has been sent to the associated email.';
+                $notice = $action === 'resend' && ($result['status'] ?? '') === 'sent'
+                    ? 'A new verification code has been sent. Your previous code is no longer valid.'
+                    : ($eligibleAdmin ? 'A 6-digit verification code has been sent to ' . $eligibleAdmin['email'] . '.' : 'If an account matches, an OTP has been sent to the associated email.');
             }
         } elseif ($action === 'verify' && $pending) {
             $code = preg_replace('/\D/', '', otp_post_string('otp_code'));

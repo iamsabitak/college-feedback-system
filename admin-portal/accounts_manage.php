@@ -88,9 +88,9 @@ include 'includes/header.php';
     </div>
     <div class="filter-actions">
       <?php if ($tab === 'accounts'): ?>
-      <label for="account-category" style="display:flex; align-items:center; gap:8px; font-size:12px; font-weight:600; color:var(--ink-soft);">
-        Category
-        <select id="account-category" style="min-width:130px;">
+      <label for="account-category" class="account-category-control">
+        <span>Category</span>
+        <select id="account-category">
           <option value="all" <?php echo $category === 'all' ? 'selected' : ''; ?>>All accounts</option>
           <option value="student" <?php echo $category === 'student' ? 'selected' : ''; ?>>Students</option>
           <option value="staff" <?php echo $category === 'staff' ? 'selected' : ''; ?>>Staff</option>
@@ -218,12 +218,12 @@ include 'includes/header.php';
 <?php endif; ?>
 
 <div id="accountFiltersModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="accountFiltersTitle">
-  <div class="modal-box" style="max-width:520px;">
-    <div class="feedback-modal-header" style="margin-bottom:20px;">
+  <div class="modal-box account-filter-box">
+    <div class="feedback-modal-header account-filter-header">
       <div><h3 id="accountFiltersTitle">Filters</h3><p>Refine the current account list</p></div>
       <button type="button" class="modal-close" data-close-filter-modal aria-label="Close filters">&times;</button>
     </div>
-    <form method="GET" id="accountFilterForm">
+    <form method="GET" id="accountFilterForm" class="account-filter-form">
       <input type="hidden" name="tab" value="<?php echo htmlspecialchars($tab, ENT_QUOTES, 'UTF-8'); ?>">
       <input type="hidden" name="category" value="<?php echo htmlspecialchars($category, ENT_QUOTES, 'UTF-8'); ?>">
       <input type="hidden" name="search" value="<?php echo htmlspecialchars($search, ENT_QUOTES, 'UTF-8'); ?>">
@@ -236,7 +236,7 @@ include 'includes/header.php';
           <option value="disabled" <?php echo $statusFilter === 'disabled' ? 'selected' : ''; ?>>Disabled</option>
         </select>
       </div>
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+      <div class="account-filter-dates">
         <div class="field">
           <label for="filter_date_from">Last login from</label>
           <input id="filter_date_from" name="date_from" type="date" value="<?php echo htmlspecialchars($dateFrom, ENT_QUOTES, 'UTF-8'); ?>">
@@ -255,33 +255,34 @@ include 'includes/header.php';
 </div>
 
 <div id="accountModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="accountModalTitle">
-  <div class="modal-box" style="max-width:540px;">
-    <div class="feedback-modal-header" style="margin-bottom:18px;">
-      <div><h3 id="accountModalTitle">Add account</h3></div>
+  <div class="modal-box account-editor-box">
+    <div class="feedback-modal-header account-editor-header">
+      <div><h3 id="accountModalTitle">Add account</h3><p>Update this person's account details.</p></div>
       <button type="button" class="modal-close" data-close-account-modal aria-label="Close account form">&times;</button>
     </div>
-    <form id="accountForm" data-confirm data-confirm-title="Save account?" data-confirm-message="The account details will be created or updated." data-confirm-label="Save account">
+    <form id="accountForm" class="account-editor-form" data-confirm data-confirm-title="Save account?" data-confirm-message="The account details will be created or updated." data-confirm-label="Save account">
       <input type="hidden" name="id" value="">
-      <div class="field">
+      <div class="field account-role-field">
         <label for="account_role">Category</label>
         <select id="account_role" name="role" required>
           <option value="student">Student</option>
           <option value="staff">Staff</option>
         </select>
+        <div class="account-role-switch" role="group" aria-label="Account category"><button type="button" data-account-role="student">Student</button><button type="button" data-account-role="staff">Staff</button></div>
       </div>
-      <div class="field">
+      <div class="field account-field-full">
         <label for="account_full_name">Full name</label>
         <input id="account_full_name" name="full_name" type="text" maxlength="100" required>
       </div>
-      <div class="field">
+      <div class="field account-field-half">
         <label for="account_username">Username</label>
         <input id="account_username" name="username" type="text" maxlength="60" required>
       </div>
-      <div class="field">
+      <div class="field account-field-half">
         <label for="account_email">Email</label>
         <input id="account_email" name="email" type="email" maxlength="100" required>
       </div>
-      <div class="field">
+      <div class="field account-field-full">
         <label id="account_id_label" for="account_id">Student ID</label>
         <input id="account_id" name="account_id" type="text" maxlength="30" placeholder="Enter student ID" required>
       </div>
@@ -390,9 +391,18 @@ if (document.querySelector('[data-open-filters]')) {
 function setFormRole(role) {
   const roleName = role === 'student' ? 'student' : 'staff';
   accountRoleInput.value = roleName;
+  document.querySelectorAll('[data-account-role]').forEach((button) => {
+    const active = button.dataset.accountRole === roleName;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-pressed', String(active));
+  });
   document.getElementById('account_id_label').textContent = roleName === 'student' ? 'Student ID' : 'Staff ID';
   document.getElementById('account_id').placeholder = roleName === 'student' ? 'Enter student ID' : 'Enter staff ID';
 }
+
+document.querySelectorAll('[data-account-role]').forEach((button) => {
+  button.addEventListener('click', () => setFormRole(button.dataset.accountRole));
+});
 
 document.querySelectorAll('[data-open-account-form]').forEach((button) => {
   button.addEventListener('click', () => {

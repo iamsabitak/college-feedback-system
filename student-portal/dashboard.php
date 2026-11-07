@@ -19,10 +19,7 @@ $section = (string) ($_GET['section'] ?? 'overview');
 if (!isset($sections[$section])) {
   $section = 'overview';
 }
-$accountTab = (string) ($_GET['account_tab'] ?? 'details');
-if (!in_array($accountTab, ['details', 'security'], true)) {
-  $accountTab = 'details';
-}
+$accountTab = ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($_POST['action'] ?? '', ['request_password_otp', 'resend_password_otp', 'verify_password_otp'], true)) ? 'security' : 'details';
 $studentFormOptions = feedbackFormOptions($pdo, 'student');
 $feedbackCategories = $studentFormOptions['topics']; $studentPrograms = $studentFormOptions['departments']; $semesterOptions = $studentFormOptions['semesters'];
 $urgencyLevels = ['Low', 'Medium', 'High'];
@@ -35,7 +32,7 @@ $feedbackNotice = $_SESSION['portal_feedback_notice'] ?? null;
 unset($_SESSION['portal_feedback_notice']);
 
 $userStmt = $pdo->prepare(
-  'SELECT p.id, p.full_name, p.username, p.email, u.id AS account_user_id
+  'SELECT p.id, p.full_name, p.username, p.email, p.phone, u.id AS account_user_id
    FROM portal_users p
    LEFT JOIN users u ON LOWER(u.email) = LOWER(p.email) AND u.role = \'student\'
    WHERE p.id = :id LIMIT 1'
@@ -48,6 +45,8 @@ $accountNotice = '';
 if ($section === 'account') {
   [$accountError, $accountNotice] = processPortalAccountPost($pdo, $userId, $accountUserId, 'student', $user, $accountCsrf);
 }
+$passwordOtpPending = $_SESSION['portal_change_otp_student'] ?? null;
+$accountTab = $passwordOtpPending ? 'security' : $accountTab;
 $feedbackError = '';
 $editingFeedback = null;
 $feedbackFormValues = [];
@@ -308,6 +307,8 @@ $weeklyPath = 'M' . str_replace(' ', ' L', $weeklyPoints);
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Newsreader:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/student.css">
+  <link rel="stylesheet" href="../portal_profile.css">
+  <link rel="stylesheet" href="../portal_profile_toast.css">
   <link rel="stylesheet" href="../portal_sidebar.css">
   <link rel="stylesheet" href="../list_ui.css">
 </head>
@@ -320,12 +321,14 @@ $weeklyPath = 'M' . str_replace(' ', ' L', $weeklyPoints);
   ?>
 
   <main class="dashboard-main">
+    <?php if ($section !== 'feedback-history'): ?>
     <div class="portal-topbar">
       <nav class="portal-breadcrumb" aria-label="Breadcrumb"><a href="dashboard.php?section=overview">College Feedback</a><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg><span><?php echo htmlspecialchars($sections[$section], ENT_QUOTES, 'UTF-8'); ?></span></nav>
     </div>
-    <header class="dashboard-header">
+    <?php endif; ?>
+    <header class="dashboard-header<?php echo $section === 'account' ? ' profile-page-header' : ''; ?>">
       <div>
-        <span class="page-kicker"><?php echo $section === 'overview' ? 'Welcome back' : 'Student Portal'; ?></span>
+        <span class="page-kicker"><?php echo $section === 'overview' ? 'Welcome back' : ($section === 'feedback-history' ? 'Student tools' : 'Student Portal'); ?></span>
         <h1><?php echo $section === 'overview' ? htmlspecialchars($user['full_name'] ?? 'Student', ENT_QUOTES, 'UTF-8') : htmlspecialchars($sections[$section], ENT_QUOTES, 'UTF-8'); ?></h1>
       </div>
       <div class="user-chip"><?php echo htmlspecialchars($user['username'] ?? 'student', ENT_QUOTES, 'UTF-8'); ?></div>
@@ -445,47 +448,31 @@ $weeklyPath = 'M' . str_replace(' ', ' L', $weeklyPoints);
         <?php renderPortalPagination($feedbackHistoryTotal, $feedbackHistoryPage, $feedbackHistoryPages, $feedbackHistoryPerPage, $allowedFeedbackPageSizes, ['section' => 'feedback-history', 'q' => $feedbackSearch, 'date' => $feedbackDate, 'status' => $feedbackStatusFilter, 'visibility' => $feedbackVisibilityFilter]); ?>
       <?php endif; ?>
     <?php elseif ($section === 'account'): ?>
+      <?php $portalAccount = $user; $portalRole = 'student'; require __DIR__ . '/../portal_profile_view.php'; ?>
+    <?php elseif ($section === 'account' && false): ?>
+      <?php $profileInitials = strtoupper(substr((string) ($user['full_name'] ?? 'Student'), 0, 1) . substr(strstr((string) ($user['full_name'] ?? ''), ' ') ?: '', 1, 1)); ?>
       <div class="profile-settings portal-profile-settings">
-      <nav class="profile-tabs" role="tablist" aria-label="Profile settings">
-        <a class="profile-tab <?php echo $accountTab === 'details' ? 'active' : ''; ?>" id="profileDetailsTab" role="tab" aria-controls="profileDetailsPanel" aria-selected="<?php echo $accountTab === 'details' ? 'true' : 'false'; ?>" href="dashboard.php?section=account&amp;account_tab=details">Profile Details</a>
-        <a class="profile-tab <?php echo $accountTab === 'security' ? 'active' : ''; ?>" id="profileSecurityTab" role="tab" aria-controls="profileSecurityPanel" aria-selected="<?php echo $accountTab === 'security' ? 'true' : 'false'; ?>" href="dashboard.php?section=account&amp;account_tab=security">Security</a>
-      </nav>
-      <?php if ($accountError): ?><div class="alert alert-error" role="alert"><?php echo htmlspecialchars($accountError, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
-      <?php if ($accountNotice): ?><div class="alert alert-success" role="status"><?php echo htmlspecialchars($accountNotice, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
-      <?php if ($accountTab === 'details'): ?>
-        <section class="profile-tab-panel active" role="tabpanel" id="profileDetailsPanel" aria-labelledby="profileDetailsTab">
-        <div class="profile-section-heading"><div><h2>Profile Information</h2><p>Update your name and username. Email changes require administrator verification.</p></div></div>
-        <section class="profile-card portal-profile-card" aria-label="Profile information">
-          <form method="POST" action="dashboard.php?section=account&account_tab=details" class="submission-form account-form">
-            <input type="hidden" name="action" value="update_profile"><input type="hidden" name="account_csrf_token" value="<?php echo htmlspecialchars($accountCsrf, ENT_QUOTES, 'UTF-8'); ?>">
-            <div class="field"><label for="full_name">Full name</label><input id="full_name" name="full_name" maxlength="100" value="<?php echo htmlspecialchars($_POST['full_name'] ?? $user['full_name'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" required></div>
-            <div class="field"><label for="username">Username</label><input id="username" name="username" minlength="3" maxlength="60" pattern="[A-Za-z0-9._-]{3,60}" value="<?php echo htmlspecialchars($_POST['username'] ?? $user['username'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" required></div>
-            <div class="field"><label for="email">Email address</label><input id="email" type="email" value="<?php echo htmlspecialchars($user['email'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" readonly></div>
-            <button type="submit" class="btn btn-primary">Save profile</button>
-          </form>
+        <aside class="profile-identity-card" aria-label="Student account summary">
+          <div class="profile-avatar" aria-hidden="true"><?php echo htmlspecialchars($profileInitials ?: 'S', ENT_QUOTES, 'UTF-8'); ?></div>
+          <h2><?php echo htmlspecialchars($user['full_name'] ?? 'Student', ENT_QUOTES, 'UTF-8'); ?></h2><p class="profile-handle">@<?php echo htmlspecialchars($user['username'] ?? 'student', ENT_QUOTES, 'UTF-8'); ?></p><span class="profile-role-badge">Student account</span>
+          <dl><div><dt><svg aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>Email</dt><dd><?php echo htmlspecialchars($user['email'] ?? '—', ENT_QUOTES, 'UTF-8'); ?></dd></div><div><dt><svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Username</dt><dd>@<?php echo htmlspecialchars($user['username'] ?? 'student', ENT_QUOTES, 'UTF-8'); ?></dd></div></dl>
+        </aside>
+        <section class="profile-editor-card" data-profile-tabs>
+          <nav class="profile-tabs" role="tablist" aria-label="Profile settings"><button type="button" class="profile-tab <?php echo $accountTab === 'details' ? 'active' : ''; ?>" id="profileDetailsTab" role="tab" aria-controls="profileDetailsPanel" aria-selected="<?php echo $accountTab === 'details' ? 'true' : 'false'; ?>" tabindex="<?php echo $accountTab === 'details' ? '0' : '-1'; ?>" data-profile-tab="details">Profile Details</button><button type="button" class="profile-tab <?php echo $accountTab === 'security' ? 'active' : ''; ?>" id="profileSecurityTab" role="tab" aria-controls="profileSecurityPanel" aria-selected="<?php echo $accountTab === 'security' ? 'true' : 'false'; ?>" tabindex="<?php echo $accountTab === 'security' ? '0' : '-1'; ?>" data-profile-tab="security">Security</button></nav>
+          <div class="profile-editor-content">
+          <?php if ($accountError): ?><div class="alert alert-error" role="alert"><?php echo htmlspecialchars($accountError, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
+          <?php if ($accountNotice): ?><div class="alert alert-success" role="status"><?php echo htmlspecialchars($accountNotice, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
+            <section class="profile-tab-panel active" role="tabpanel" id="profileDetailsPanel" aria-labelledby="profileDetailsTab" data-profile-panel="details"<?php echo $accountTab === 'details' ? '' : ' hidden'; ?>><div class="profile-section-heading"><div><h2>Profile Information</h2><p>Update your name and username.</p></div></div><form method="POST" action="dashboard.php?section=account" class="submission-form account-form"><input type="hidden" name="action" value="update_profile"><input type="hidden" name="account_csrf_token" value="<?php echo htmlspecialchars($accountCsrf, ENT_QUOTES, 'UTF-8'); ?>"><div class="field profile-field-full"><label for="full_name">Full name</label><input id="full_name" name="full_name" maxlength="100" value="<?php echo htmlspecialchars($_POST['full_name'] ?? $user['full_name'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" required></div><div class="field"><label for="username">Username</label><input id="username" name="username" minlength="3" maxlength="60" pattern="[A-Za-z0-9._-]{3,60}" value="<?php echo htmlspecialchars($_POST['username'] ?? $user['username'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" required></div><div class="field"><label for="email">Email address</label><input id="email" type="email" value="<?php echo htmlspecialchars($user['email'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" readonly></div><button type="submit" class="btn btn-primary">Save profile</button></form></section>
+            <section class="profile-tab-panel<?php echo $accountTab === 'security' ? ' active' : ''; ?>" role="tabpanel" id="profileSecurityPanel" aria-labelledby="profileSecurityTab" data-profile-panel="security"<?php echo $accountTab === 'security' ? '' : ' hidden'; ?>><div class="profile-section-heading"><div><h2>Security</h2><p>Update your password to keep your account secure.</p></div></div><div class="security-layout"><form method="POST" action="dashboard.php?section=account" class="submission-form account-form"><input type="hidden" name="action" value="change_password"><input type="hidden" name="account_csrf_token" value="<?php echo htmlspecialchars($accountCsrf, ENT_QUOTES, 'UTF-8'); ?>"><div class="field"><label for="current_password">Current password</label><input id="current_password" name="current_password" type="password" autocomplete="current-password" required></div><div class="field"><label for="new_password">New password</label><input id="new_password" name="new_password" type="password" minlength="8" autocomplete="new-password" required></div><div class="field"><label for="confirm_password">Confirm new password</label><input id="confirm_password" name="confirm_password" type="password" minlength="8" autocomplete="new-password" required></div><button type="submit" class="btn btn-primary">Update password</button></form><aside class="password-requirements"><strong>Password requirements</strong><ul><li>At least 8 characters</li><li>Letters and numbers</li><li>Different from current password</li><li>Matches confirmation</li></ul></aside></div></section>
+          </div>
         </section>
-        </section>
-      <?php else: ?>
-        <section class="profile-tab-panel active" role="tabpanel" id="profileSecurityPanel" aria-labelledby="profileSecurityTab">
-        <div class="profile-section-heading"><div><h2>Security</h2><p>Update your password to keep your account secure.</p></div></div>
-        <section class="profile-card portal-profile-card">
-          <div class="profile-card-heading"><h3>Reset Password</h3><p>Enter your current password and choose a new secure password.</p></div>
-          <form method="POST" action="dashboard.php?section=account&account_tab=security" class="submission-form account-form">
-            <input type="hidden" name="action" value="change_password"><input type="hidden" name="account_csrf_token" value="<?php echo htmlspecialchars($accountCsrf, ENT_QUOTES, 'UTF-8'); ?>">
-            <div class="field"><label for="current_password">Current password</label><input id="current_password" name="current_password" type="password" autocomplete="current-password" required></div>
-            <div class="field"><label for="new_password">New password</label><input id="new_password" name="new_password" type="password" minlength="8" autocomplete="new-password" required></div>
-            <div class="field"><label for="confirm_password">Confirm new password</label><input id="confirm_password" name="confirm_password" type="password" minlength="8" autocomplete="new-password" required></div>
-            <button type="submit" class="btn btn-primary">Update password</button>
-          </form>
-          <div class="portal-inline top-space"><a href="forgot_password.php">Forgot your current password?</a></div>
-        </section>
-        </section>
-      <?php endif; ?>
       </div>
     <?php endif; ?>
     <footer class="portal-site-footer"><span>&copy; <?php echo date('Y'); ?> Patan Nistha Campus. All Rights Reserved. | College Online Feedback System</span></footer>
   </main>
   <script src="../portal_feedback_form.js"></script>
+  <script src="../portal_profile.js"></script>
+  <?php include __DIR__ . '/../confirmation_modal.php'; ?>
   <?php if (isset($_GET['embed'], $_GET['saved'])): ?><script>window.parent.postMessage({type:'portal-feedback-saved'}, window.location.origin);</script><?php endif; ?>
 </body>
 </html>

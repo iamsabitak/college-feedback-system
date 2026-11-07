@@ -1,4 +1,56 @@
 document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('[data-profile-tabs]').forEach(function (profileTabs) {
+    var tabs = Array.from(profileTabs.querySelectorAll('[data-profile-tab]'));
+    var panels = Array.from(profileTabs.querySelectorAll('[data-profile-panel]'));
+    function selectTab(tab, focus) {
+      var selected = tab.dataset.profileTab;
+      tabs.forEach(function (item) {
+        var active = item === tab;
+        item.classList.toggle('active', active);
+        item.setAttribute('aria-selected', String(active));
+        item.tabIndex = active ? 0 : -1;
+      });
+      panels.forEach(function (panel) {
+        var active = panel.dataset.profilePanel === selected;
+        panel.hidden = !active;
+        panel.classList.toggle('active', active);
+      });
+      if (focus) tab.focus();
+    }
+    tabs.forEach(function (tab, index) {
+      tab.addEventListener('click', function () { selectTab(tab, false); });
+      tab.addEventListener('keydown', function (event) {
+        var next = index;
+        if (event.key === 'ArrowRight') next = (index + 1) % tabs.length;
+        else if (event.key === 'ArrowLeft') next = (index - 1 + tabs.length) % tabs.length;
+        else if (event.key === 'Home') next = 0;
+        else if (event.key === 'End') next = tabs.length - 1;
+        else return;
+        event.preventDefault();
+        selectTab(tabs[next], true);
+      });
+    });
+  });
+
+  document.querySelectorAll('.security-layout input[type="password"]').forEach(function (input) {
+    if (input.parentElement.classList.contains('security-password-input')) return;
+    var wrap = document.createElement('span');
+    wrap.className = 'security-password-input';
+    input.parentNode.insertBefore(wrap, input);
+    wrap.appendChild(input);
+    var toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'security-password-toggle';
+    toggle.setAttribute('aria-label', 'Show password');
+    toggle.innerHTML = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.5"/></svg>';
+    toggle.addEventListener('click', function () {
+      var visible = input.type === 'password';
+      input.type = visible ? 'text' : 'password';
+      toggle.setAttribute('aria-label', visible ? 'Hide password' : 'Show password');
+      toggle.classList.toggle('is-visible', visible);
+    });
+    wrap.appendChild(toggle);
+  });
   const maxFileSize = 5 * 1024 * 1024;
   const allowedExtensions = ['jpg', 'jpeg', 'png', 'pdf'];
 

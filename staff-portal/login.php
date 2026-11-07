@@ -1,4 +1,5 @@
 <?php
+session_name('college_feedback_staff');
 session_start();
 require __DIR__ . '/includes/db.php';
 
@@ -61,10 +62,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php if ($error): ?><div class="alert alert-error" role="alert"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
         <form method="POST" novalidate data-login-form>
           <div class="field"><label for="email">Email address</label><input type="email" id="email" name="email" autocomplete="username" value="<?php echo htmlspecialchars($_POST['email'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" required autofocus></div>
-          <div class="field"><label for="password">Password</label><div class="login-password-input"><input type="password" id="password" name="password" autocomplete="current-password" required><button class="login-password-toggle" type="button" data-login-password-toggle aria-label="Show password"><svg class="eye-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.5"/></svg><svg class="eye-closed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 3 18 18"/><path d="M10.6 6.2A10.8 10.8 0 0 1 12 6c6.5 0 10 6 10 6a18 18 0 0 1-3.1 3.8M6.1 6.1C3.5 7.9 2 12 2 12s3.5 6 10 6c1.3 0 2.5-.2 3.5-.6"/><circle cx="12" cy="12" r="2.5"/></svg></button></div></div>
+          <div class="field"><label for="password">Password</label><div class="login-password-input"><input type="password" id="password" name="password" autocomplete="current-password" required><button class="login-password-toggle" type="button" data-login-password-toggle aria-label="Show password"><svg class="eye-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.5"/></svg><svg class="eye-closed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 3 18 18"/><path d="M10.6 6.2A10.8 10.8 0 0 1 12 6c6.5 0 10 6 10 6a18 18 0 0 1-3.1 3.8M6.1 6.1C3.5 7.9 2 12 2 12s3.5 6 10 6c1.3 0 2.5-.2 3.5-.6"/><circle cx="12" cy="12" r="2.5"/></svg></button></div><a class="forgot-link" href="forgot_password.php">Forgot password?</a></div>
           <button type="submit" class="btn btn-primary btn-block login-submit"><span class="login-submit-content"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Sign In</span><span class="login-spinner" aria-hidden="true"></span></button>
         </form>
-        <p class="demo-hint">Demo credentials: <strong>staff@example.com</strong> / <strong>staff123</strong></p>
+        <p class="demo-hint">Demo credentials: <strong>staff@yopmail.com</strong> / <strong>staff123</strong></p>
       </div>
     </section>
   </main>

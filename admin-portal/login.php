@@ -4,6 +4,7 @@
  *
  * Application-owned logic for login.php.
  */
+session_name('college_feedback_admin');
 session_start();
 
 // The PHP session stores the signed-in administrator ID for protected pages.
@@ -77,7 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <label class="remember-row"><input type="checkbox" name="remember" value="1"><span>Remember me on this device</span></label>
           <button type="submit" class="btn btn-primary btn-block login-submit"><span class="login-submit-content"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Sign In</span><span class="login-spinner" aria-hidden="true"></span></button>
         </form>
-        <p class="demo-hint">Demo credentials: <strong>admin@example.com</strong> / <strong>admin123</strong></p>
+        <p class="demo-hint">Demo credentials: <strong>sabitakhadka091@gmail.com</strong> / <strong>admin123</strong></p>
       </div>
     </section>
   </main>

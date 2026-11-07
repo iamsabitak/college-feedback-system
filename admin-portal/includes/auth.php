@@ -9,6 +9,7 @@
  * Section 13: "Every admin page verifies an active login session before showing private data."
  */
 if (session_status() === PHP_SESSION_NONE) {
+    session_name('college_feedback_admin');
     session_start();
 
 // This check protects every administrator page from direct access without a valid session.

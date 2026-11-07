@@ -86,7 +86,6 @@ $readQueryString = static function (string $key): string {
 };
 $search   = $readQueryString('q');
 $type     = $readQueryString('type');
-$category = $readQueryString('category');
 $rating   = $readQueryString('rating');
 $dateFrom = $readQueryString('date_from');
 $dateTo   = $readQueryString('date_to');
@@ -117,10 +116,6 @@ if ($search !== '') {
 if ($type !== '' && in_array($type, ['Student', 'Teacher & Staff'], true)) {
     $where[] = 'submitter_type = :type';
     $params[':type'] = $type;
-}
-if ($category !== '') {
-    $where[] = 'category = :category';
-    $params[':category'] = $category;
 }
 if ($rating !== '' && in_array($rating, ['1','2','3','4','5'], true)) {
     $where[] = 'rating = :rating';
@@ -159,10 +154,6 @@ $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
 $stmt->execute();
 $rows = $stmt->fetchAll();
 
-// Distinct categories for the filter dropdown
-
-// The category list is loaded from the database so new categories appear automatically.
-$categories = $pdo->query('SELECT DISTINCT category FROM feedback ORDER BY category')->fetchAll(PDO::FETCH_COLUMN);
 
 function badgeClass($type) {
     return match ($type) {
@@ -186,11 +177,10 @@ function statusBadgeClass($status) {
     };
 }
 
-$activeFilterCount = count(array_filter([$type, $category, $rating, $status, $dateFrom, $dateTo], static fn($value) => $value !== ''));
+$activeFilterCount = count(array_filter([$type, $rating, $status, $dateFrom, $dateTo], static fn($value) => $value !== ''));
 $paginationParams = array_filter([
   'q' => $search,
   'type' => $type,
-  'category' => $category,
   'rating' => $rating,
   'status' => $status,
   'date_from' => $dateFrom,
@@ -378,7 +368,7 @@ $weeklyPath = 'M' . str_replace(' ', ' L', $weeklyPoints);
 <div class="dashboard-toolbar">
   <div class="list-toolbar-actions">
     <form method="GET" class="live-search-form" data-live-search>
-      <?php foreach (['type' => $type, 'category' => $category, 'rating' => $rating, 'status' => $status, 'date_from' => $dateFrom, 'date_to' => $dateTo, 'per_page' => $perPage] as $name => $value): if ($value !== ''): ?><input type="hidden" name="<?php echo $name; ?>" value="<?php echo htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8'); ?>"><?php endif; endforeach; ?>
+      <?php foreach (['type' => $type, 'rating' => $rating, 'status' => $status, 'date_from' => $dateFrom, 'date_to' => $dateTo, 'per_page' => $perPage] as $name => $value): if ($value !== ''): ?><input type="hidden" name="<?php echo $name; ?>" value="<?php echo htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8'); ?>"><?php endif; endforeach; ?>
       <label class="sr-only" for="feedbackSearch">Search feedback</label>
       <input type="search" id="feedbackSearch" name="q" value="<?php echo htmlspecialchars($search, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Search name, comment, category" autocomplete="off">
     </form>
@@ -392,7 +382,6 @@ $weeklyPath = 'M' . str_replace(' ', ' L', $weeklyPoints);
           <div class="filter-panel-grid">
         <div class="filter-group"><label for="type">Submitter Type</label><select id="type" name="type"><option value="">All Types</option><option value="Student" <?php echo $type === 'Student' ? 'selected' : ''; ?>>Student</option><option value="Teacher & Staff" <?php echo $type === 'Teacher & Staff' ? 'selected' : ''; ?>>Teacher / Staff</option></select></div>
         <div class="filter-group"><label for="status">Status</label><select id="status" name="status"><option value="">All Statuses</option><?php foreach (['New', 'Reviewed', 'Resolved'] as $option): ?><option value="<?php echo $option; ?>" <?php echo $status === $option ? 'selected' : ''; ?>><?php echo $option; ?></option><?php endforeach; ?></select></div>
-        <div class="filter-group"><label for="category">Category</label><select id="category" name="category"><option value="">All Categories</option><?php foreach ($categories as $c): ?><option value="<?php echo htmlspecialchars($c, ENT_QUOTES, 'UTF-8'); ?>" <?php echo $category === $c ? 'selected' : ''; ?>><?php echo htmlspecialchars($c, ENT_QUOTES, 'UTF-8'); ?></option><?php endforeach; ?></select></div>
         <div class="filter-group"><label for="rating">Rating</label><select id="rating" name="rating"><option value="">Any Rating</option><?php for ($i = 5; $i >= 1; $i--): ?><option value="<?php echo $i; ?>" <?php echo $rating === (string) $i ? 'selected' : ''; ?>><?php echo $i; ?> Star<?php echo $i > 1 ? 's' : ''; ?></option><?php endfor; ?></select></div>
             <div class="filter-group"><label for="date_from">From</label><input type="date" id="date_from" name="date_from" value="<?php echo htmlspecialchars($dateFrom, ENT_QUOTES, 'UTF-8'); ?>"></div>
             <div class="filter-group"><label for="date_to">To</label><input type="date" id="date_to" name="date_to" value="<?php echo htmlspecialchars($dateTo, ENT_QUOTES, 'UTF-8'); ?>"></div>
