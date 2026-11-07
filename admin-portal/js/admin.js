@@ -287,6 +287,29 @@ document.addEventListener('DOMContentLoaded', function () {
     const csrfToken = profileRoot.dataset.csrfToken;
     const updatedAt = document.querySelector('[data-profile-updated]');
 
+    // Profile fields save by AJAX, so use the shared confirmation dialog before
+    // allowing the existing save handler to submit the update.
+    profileRoot.addEventListener('click', function (event) {
+      const saveButton = event.target.closest('[data-profile-save]');
+      if (!saveButton) return;
+      if (saveButton.dataset.confirmed === 'true') {
+        delete saveButton.dataset.confirmed;
+        return;
+      }
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (typeof window.openActionConfirmation === 'function') {
+        window.openActionConfirmation({
+          title: 'Save profile change?',
+          message: 'This profile field will be updated immediately.',
+          confirmLabel: 'Save change'
+        }, function () {
+          saveButton.dataset.confirmed = 'true';
+          saveButton.click();
+        });
+      }
+    }, true);
+
     async function profileRequest(data) {
       const body = new URLSearchParams(data);
       body.set('csrf_token', csrfToken);

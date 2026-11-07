@@ -1,4 +1,5 @@
 <?php
+session_name('college_feedback_student');
 session_start();
 $_SESSION = [];
 if (ini_get('session.use_cookies')) {

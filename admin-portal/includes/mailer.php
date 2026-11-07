@@ -71,8 +71,8 @@ function send_otp_email(string $to, string $otpCode, string $purpose): bool
             'email_change' => 'verify your new administrator email address',
             default => 'reset your password',
         };
-        $mail->Body = '<p>College Feedback System</p><p>Use this verification code to ' . $action . ':</p><p style="font-size:28px;font-weight:bold;letter-spacing:6px">' . htmlspecialchars($otpCode, ENT_QUOTES, 'UTF-8') . '</p><p>This code expires in 60 seconds.</p>';
-        $mail->AltBody = "College Feedback System\n\nYour verification code is: {$otpCode}\n\nThis code expires in 60 seconds.";
+        $mail->Body = '<p>College Feedback System</p><p>Use this verification code to ' . $action . ':</p><p style="font-size:28px;font-weight:bold;letter-spacing:6px">' . htmlspecialchars($otpCode, ENT_QUOTES, 'UTF-8') . '</p><p>This code expires in 10 minutes.</p>';
+        $mail->AltBody = "College Feedback System\n\nYour verification code is: {$otpCode}\n\nThis code expires in 10 minutes.";
         $mail->send();
         return true;
     } catch (Throwable $e) {

@@ -24,7 +24,7 @@ $prepareStep = static function (int $adminId, ?array $latest): array {
     $created = $latest ? (int) $latest['created_epoch'] : $now;
     return [
         'admin_id' => $adminId,
-        'expires_at' => $latest ? (int) $latest['expires_epoch'] : $now + 60,
+        'expires_at' => $latest ? (int) $latest['expires_epoch'] : $now + 600,
         'resend_at' => $created + 60,
     ];
 };
@@ -68,7 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $pending = $prepareStep((int) $admin['id'], $latest);
                 $_SESSION['change_otp'] = $pending;
                 if ($result['status'] === 'sent') {
-                    $notice = 'A new verification code was sent to your administrator email.';
+                    $notice = 'A new verification code has been sent. Your previous code is no longer valid.';
                 } elseif ($result['status'] === 'cooldown') {
                     $error = 'Please wait for the current resend cooldown to finish.';
                 } else {

@@ -80,7 +80,7 @@ function otp_issue
         $code = (string) random_int(100000, 999999);
         $insert = $pdo->prepare(
             'INSERT INTO password_otp (admin_id, otp_code, purpose, expires_at)
-             VALUES (:admin_id, :otp_code, :purpose, DATE_ADD(NOW(), INTERVAL 60 SECOND))'
+             VALUES (:admin_id, :otp_code, :purpose, DATE_ADD(NOW(), INTERVAL 10 MINUTE))'
         );
         $insert->execute([
             ':admin_id' => $adminId,
