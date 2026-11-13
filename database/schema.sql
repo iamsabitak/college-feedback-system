@@ -63,6 +63,10 @@ CREATE TABLE IF NOT EXISTS portal_users (
     username      VARCHAR(60) NOT NULL UNIQUE,
     full_name     VARCHAR(120) NOT NULL,
     email         VARCHAR(160) NOT NULL UNIQUE,
+    department_faculty VARCHAR(120) NULL,
+    semester_year VARCHAR(80) NULL,
+    staff_department VARCHAR(120) NULL,
+    staff_role VARCHAR(120) NULL,
     password_hash VARCHAR(255) NOT NULL,
     created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_portal_role (role)

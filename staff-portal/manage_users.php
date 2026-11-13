@@ -2,6 +2,9 @@
 require __DIR__ . '/includes/auth.php';
 require __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/../portal_notifications.php';
+require_once __DIR__ . '/../portal_feedback_options.php';
+
+$studentAccountOptions = feedbackFormOptions($pdo, 'student');
 
 $sidebarStaffStmt = $pdo->prepare('SELECT username, full_name, email FROM portal_users WHERE id = :id AND role = \'staff\' LIMIT 1');
 $sidebarStaffStmt->execute([':id' => (int) $_SESSION['staff_id']]);
@@ -20,9 +23,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $error === '') {
     $fullName = trim($_POST['full_name'] ?? '');
     $email = trim($_POST['email'] ?? '');
   $studentId = trim($_POST['student_id'] ?? '');
+    $departmentFaculty = trim($_POST['department_faculty'] ?? '');
+    $semesterYear = trim($_POST['semester_year'] ?? '');
     $password = $_POST['password'] ?? '';
 
-  if ($username === '' || $fullName === '' || $email === '' || $studentId === '' || $password === '') {
+  if ($username === '' || $fullName === '' || $email === '' || $studentId === '' || $password === '' || $departmentFaculty === '' || $semesterYear === '') {
         $error = 'All fields are required.';
   } elseif (!preg_match('/^[A-Za-z0-9._-]{3,60}$/', $username)) {
     $error = 'Username must be 3-60 characters using letters, numbers, dots, underscores, or hyphens.';
@@ -32,6 +37,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $error === '') {
     $error = 'Enter a valid name and email address.';
   } elseif (!preg_match('/^[A-Za-z0-9\/-]{3,30}$/', $studentId)) {
     $error = 'Student ID must be 3-30 characters using letters, numbers, /, or -.';
+  } elseif (!in_array($departmentFaculty, $studentAccountOptions['departments'] ?? [], true)) {
+    $error = 'Choose a valid department or faculty.';
+  } elseif (!in_array($semesterYear, $studentAccountOptions['semesters'][$departmentFaculty] ?? [], true)) {
+    $error = 'Choose a valid semester or year for the selected department.';
   } elseif (strlen($password) < 8) {
     $error = 'Password must be at least 8 characters long.';
     } else {
@@ -55,25 +64,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $error === '') {
         try {
       $pdo->beginTransaction();
       $userStmt = $pdo->prepare(
-        'INSERT INTO users (full_name, username, email, student_id, role, password_hash, status, must_change_password, approval_status, created_by_staff_id)
-         VALUES (:full_name, :username, :email, :student_id, \'student\', :password_hash, \'active\', 0, \'pending\', :staff_id)'
+        'INSERT INTO users (full_name, username, email, student_id, department_faculty, semester_year, role, password_hash, status, must_change_password, approval_status, created_by_staff_id)
+         VALUES (:full_name, :username, :email, :student_id, :department_faculty, :semester_year, \'student\', :password_hash, \'active\', 0, \'pending\', :staff_id)'
       );
       $userStmt->execute([
         ':full_name' => $fullName,
         ':username' => $username,
         ':email' => $email,
         ':student_id' => $studentId,
+        ':department_faculty' => $departmentFaculty,
+        ':semester_year' => $semesterYear,
         ':password_hash' => $hash,
         ':staff_id' => (int) $_SESSION['staff_id'],
       ]);
       $portalStmt = $pdo->prepare(
-        'INSERT INTO portal_users (role, username, full_name, email, password_hash, status, approval_status)
-         VALUES (\'student\', :username, :full_name, :email, :password_hash, \'active\', \'pending\')'
+        'INSERT INTO portal_users (role, username, full_name, email, department_faculty, semester_year, password_hash, status, approval_status)
+         VALUES (\'student\', :username, :full_name, :email, :department_faculty, :semester_year, :password_hash, \'active\', \'pending\')'
       );
       $portalStmt->execute([
         ':username' => $username,
         ':full_name' => $fullName,
         ':email' => $email,
+        ':department_faculty' => $departmentFaculty,
+        ':semester_year' => $semesterYear,
         ':password_hash' => $hash,
       ]);
       notifyAllAdministrators($pdo, 'student_approval', 'Student account awaiting approval', $fullName . ' has been created by a staff member and needs approval.');
@@ -92,7 +105,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $error === '') {
 
 $usersStmt = $pdo->query(
   'SELECT pu.id, pu.username, pu.full_name, pu.email, pu.status,
-      u.student_id, u.approval_status
+      u.student_id, COALESCE(u.department_faculty, pu.department_faculty) AS department_faculty,
+      COALESCE(u.semester_year, pu.semester_year) AS semester_year, u.approval_status
    FROM portal_users pu
    LEFT JOIN users u ON LOWER(u.email) = LOWER(pu.email) AND u.role = \'student\'
    WHERE pu.role = \'student\'
@@ -119,6 +133,7 @@ $approvedStudentCount = count(array_filter($users, static function ($user) {
   <link rel="stylesheet" href="css/staff.css">
   <link rel="stylesheet" href="../portal_sidebar.css">
   <link rel="stylesheet" href="../list_ui.css">
+  <link rel="stylesheet" href="../portal_selects.css">
 </head>
 <body class="dashboard-body">
   <?php
@@ -131,6 +146,9 @@ $approvedStudentCount = count(array_filter($users, static function ($user) {
   ?>
 
   <main class="dashboard-main">
+    <div class="portal-topbar">
+      <nav class="portal-breadcrumb" aria-label="Breadcrumb"><a href="dashboard.php?section=overview">College Feedback</a><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg><span>Create Student Accounts</span></nav>
+    </div>
     <header class="dashboard-header">
       <div>
         <span class="page-kicker">Staff tools</span>
@@ -174,6 +192,14 @@ $approvedStudentCount = count(array_filter($users, static function ($user) {
           <input type="email" id="email" name="email" maxlength="100" value="<?php echo htmlspecialchars($_POST['email'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" required>
         </div>
         <div class="field">
+          <label for="department_faculty">Department / Faculty</label>
+          <select id="department_faculty" name="department_faculty" required><option value="">Choose department / faculty</option><?php foreach ($studentAccountOptions['departments'] ?? [] as $option): ?><option value="<?php echo htmlspecialchars($option, ENT_QUOTES, 'UTF-8'); ?>" <?php echo ($_POST['department_faculty'] ?? '') === $option ? 'selected' : ''; ?>><?php echo htmlspecialchars($option, ENT_QUOTES, 'UTF-8'); ?></option><?php endforeach; ?></select>
+        </div>
+        <div class="field">
+          <label for="semester_year">Semester / Year</label>
+          <select id="semester_year" name="semester_year" required></select>
+        </div>
+        <div class="field">
           <label for="password">Password</label>
           <input type="password" id="password" name="password" minlength="8" required>
         </div>
@@ -196,6 +222,8 @@ $approvedStudentCount = count(array_filter($users, static function ($user) {
               <th>Name</th>
               <th>Username</th>
               <th>Email</th>
+              <th>Department / Faculty</th>
+              <th>Semester / Year</th>
               <th>Approval</th>
             </tr>
           </thead>
@@ -206,6 +234,8 @@ $approvedStudentCount = count(array_filter($users, static function ($user) {
                 <td><span class="student-name-cell"><span class="student-initials" aria-hidden="true"><?php echo htmlspecialchars(strtoupper(substr($user['full_name'], 0, 1) . substr(strstr($user['full_name'], ' ') ?: '', 1, 1)), ENT_QUOTES, 'UTF-8'); ?></span><strong><?php echo htmlspecialchars($user['full_name'], ENT_QUOTES, 'UTF-8'); ?></strong></span></td>
                 <td><?php echo htmlspecialchars($user['username'], ENT_QUOTES, 'UTF-8'); ?></td>
                 <td><?php echo htmlspecialchars($user['email'], ENT_QUOTES, 'UTF-8'); ?></td>
+                <td><?php echo htmlspecialchars((string) ($user['department_faculty'] ?? '-'), ENT_QUOTES, 'UTF-8'); ?></td>
+                <td><?php echo htmlspecialchars((string) ($user['semester_year'] ?? '-'), ENT_QUOTES, 'UTF-8'); ?></td>
                 <?php $approval = (string) ($user['approval_status'] ?? 'approved'); ?><td><span class="student-approval student-approval-<?php echo htmlspecialchars($approval, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars(ucfirst($approval), ENT_QUOTES, 'UTF-8'); ?></span></td>
               </tr>
             <?php endforeach; ?>
@@ -229,6 +259,16 @@ $approvedStudentCount = count(array_filter($users, static function ($user) {
   </main>
 <script>
 const studentIdentityDialog = document.getElementById('studentIdentityDialog');
+const studentSemesterOptions = <?php echo json_encode($studentAccountOptions['semesters'] ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+const studentDepartmentField = document.getElementById('department_faculty');
+const studentSemesterField = document.getElementById('semester_year');
+function populateStudentSemesters(selected = '') {
+  const department = studentDepartmentField?.value || '';
+  studentSemesterField.replaceChildren(new Option(department ? 'Choose semester / year' : 'Choose department first', ''));
+  (studentSemesterOptions[department] || []).forEach((option) => studentSemesterField.add(new Option(option, option, false, option === selected)));
+}
+populateStudentSemesters(<?php echo json_encode($_POST['semester_year'] ?? '', JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>);
+studentDepartmentField?.addEventListener('change', () => populateStudentSemesters());
 <?php if ($error): ?>studentIdentityDialog?.showModal();<?php endif; ?>
 document.querySelector('[data-open-student-dialog]')?.addEventListener('click', () => studentIdentityDialog.showModal());
 document.querySelectorAll('[data-close-student-dialog]').forEach((button) => {

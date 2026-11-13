@@ -19,9 +19,13 @@ college-feedback-system/
 │   ├── migration_users.sql        ← Student/staff user table and account audit model
 │   ├── migration_status_log.sql   ← Feedback status log / audit history
 │   ├── migration_portal_feedback_fields.sql ← Student/staff feedback fields and attachments
-│   └── college_feedback.sql      ← Legacy schema dump for reference
+│   ├── migration_account_academic_info.sql ← Student academic and staff employment information
+│   ├── migration_feedback_dropdown_options.sql ← Portal lookup/dropdown values
+│   ├── migration_portal_password_otp.sql ← Student/staff OTP table
+│   ├── migration_general_notifications.sql ← General notification fields
+│   └── migration_student_approvals.sql ← Pending/approved/rejected student accounts
 ├── composer.json       ← PHPMailer dependency
-├── index.php           ← Portal landing page with Student, Staff, and Admin entry points
+├── index.php           ← Public landing page with Student and Staff entry points
 ├── PROJECT_DOCUMENTATION.md
 └── README.md
 ```
@@ -42,13 +46,22 @@ The project provides protected student, staff, and administrator portal flows.
    This creates the `college_feedback_system` database, the `feedback` and `admin` tables, a
    default admin account, and sample feedback rows. You can also import `schema.sql` through
    phpMyAdmin.
-4. Apply the role and status migrations for the student/staff additions:
+4. Apply the migrations in dependency order:
    ```sh
+   mysql -u root -proot < database/migration_status.sql
+   mysql -u root -proot < database/migration_otp.sql
+   mysql -u root -proot < database/migration_profile.sql
+   mysql -u root -proot < database/migration_notifications.sql
+   mysql -u root -proot < database/migration_general_notifications.sql
    mysql -u root -proot < database/migration_student_staff.sql
+   mysql -u root -proot < database/migration_users.sql
    mysql -u root -proot < database/migration_accounts.sql
    mysql -u root -proot < database/migration_student_approvals.sql
    mysql -u root -proot < database/migration_status_log.sql
    mysql -u root -proot < database/migration_portal_feedback_fields.sql
+   mysql -u root -proot < database/migration_feedback_dropdown_options.sql
+   mysql -u root -proot < database/migration_portal_password_otp.sql
+   mysql -u root -proot < database/migration_account_academic_info.sql
    ```
 5. Visit:
    - Student portal: `http://localhost/college-feedback-system/student-portal/login.php`
@@ -99,8 +112,9 @@ as the `OTP_SMTP_APP_PASSWORD` environment variable, or put it in the Git-ignore
 return ['app_password' => 'your Google App Password'];
 ```
 
-Do not use the account password or commit the App Password. OTP codes expire after 60 seconds,
-and another request is rate-limited for 60 seconds server-side.
+Do not use the account password or commit the App Password. Active OTP codes expire after 10 minutes;
+resend requests are rate-limited for 60 seconds server-side. A successful new request invalidates the
+previous code and only the latest unused code remains valid.
 
 ### Admin profile setup
 
@@ -160,21 +174,47 @@ hash with PHP's `password_hash('yourpassword', PASSWORD_DEFAULT)`.
 | 8 | Admin Profile | `admin-portal/profile.php`, `admin-portal/update_profile.php` — inline profile updates and verified email changes |
 | 9 | Feedback Notifications | `database/migration_notifications.sql`, `admin-portal/check_new_feedback.php`, and read endpoints — authenticated per-admin polling and read state |
 | 10 | Ratings Chart | `admin-portal/dashboard.php` — dependency-free 1–5 rating distribution chart |
+| 11 | Account Management | `accounts_manage.php`, `account_save.php`, and `account_action.php` — staff/student CRUD, enable/disable, reset, and delete |
+| 12 | Student Approval | `student_approvals.php` and `student_approval_action.php` — pending/approved/rejected workflow |
+| 13 | Reports and CSV | `status_reports.php` — filtered report list and CSV export |
+| 14 | Audit Logs | `account_audit_log` and `feedback_status_log` with actor metadata and filters |
+| 15 | Student/Staff Profiles | Shared profile UI, academic/employment fields, phone, password, and feedback-history filters |
 
-## Security notes (Section 13)
+## Current route map
+
+Student routes: `login.php`, `dashboard.php`, `feedback_options.php`, `edit_feedback.php`,
+`forgot_password.php`, `reset_password.php`, `logout.php`.
+
+Staff routes: the same routes plus `manage_users.php` for staff-created student accounts.
+
+Admin routes include `login.php`, `dashboard.php`, `feedback_list.php`, `view_feedback.php`,
+`get_feedback_detail.php`, `status_update.php`, `delete_feedback.php`, `feedback_attachment.php`,
+`status_reports.php`, `accounts_manage.php`, `account_save.php`, `account_action.php`,
+`student_approvals.php`, `student_approval_action.php`, `profile.php`, `update_profile.php`,
+`forgot_password.php`, `change_password.php`, notification endpoints, and `logout.php`.
+
+## Security notes
 
 - Passwords stored with `password_hash()` / verified with `password_verify()` — never plain text.
-- Every query uses PDO **prepared statements** (`PDO::ATTR_EMULATE_PREPARES => false`).
+- User-controlled query values use PDO **prepared statements** (`PDO::ATTR_EMULATE_PREPARES => false`);
+  fixed aggregate queries may safely use `$pdo->query()` without parameters.
 - All user text is passed through `htmlspecialchars()` on output and `strip_tags()` on input.
 - `admin-portal/includes/auth.php` is required at the top of every protected page and redirects
   to the login page if there's no active session.
 - Deleting an entry always requires confirming in the modal before the DELETE request fires.
 - Anonymous submissions never have a name value reach the database at all — not merely hidden.
-- Password reset codes are six-digit, single-use, expire after 60 seconds, and are rate-limited
-   server-side. Logged-in password changes also verify the current password before sending an OTP.
+- Password reset codes are six-digit, single-use, expire after 10 minutes, and have a separate
+  60-second resend cooldown. Logged-in password changes also verify the current password before
+  sending an OTP.
 
-## Out of scope (per Section 4.2)
+## Current limitations and compatibility notes
 
-Login accounts for students/staff, general feedback email/SMS notifications, and PDF/Excel export
-are intentionally not included. Feedback statuses, the ratings distribution chart, and admin OTP
-password recovery have been implemented from the proposal's future-enhancements list.
+- The older project guide described a `public-portal/` directory, but it is not present in the
+  current checkout. The active public page is the root `index.php` landing page.
+- Current portal profile code expects `phone` columns on `users` and `portal_users`; verify/add those
+  columns in the deployed database before using phone profile updates on a fresh installation.
+- `migration_portal_password_otp.sql` currently defines only the `forgot_password` ENUM value, while
+  shared portal change-password code also uses `change_password`; update that column to support both.
+- `portal_submissions`, `portal_reset_tokens`, and `user_password_otp` are legacy-compatible tables.
+  Current richer portal flows use `feedback`, `portal_password_otp`, and shared portal modules.
+- Local demo credentials and root/root database credentials must not be used in production.

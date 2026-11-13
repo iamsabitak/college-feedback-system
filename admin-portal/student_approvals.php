@@ -23,12 +23,14 @@ if ($status !== '') {
     $params[':status'] = $status;
 }
 if ($search !== '') {
-    $where[] = '(LOWER(u.full_name) LIKE :search_name OR LOWER(u.username) LIKE :search_username OR LOWER(u.email) LIKE :search_email OR LOWER(u.student_id) LIKE :search_student_id OR LOWER(staff.full_name) LIKE :search_staff_name)';
+    $where[] = '(LOWER(u.full_name) LIKE :search_name OR LOWER(u.username) LIKE :search_username OR LOWER(u.email) LIKE :search_email OR LOWER(u.student_id) LIKE :search_student_id OR LOWER(u.department_faculty) LIKE :search_department OR LOWER(u.semester_year) LIKE :search_semester OR LOWER(staff.full_name) LIKE :search_staff_name)';
     $searchTerm = '%' . strtolower($search) . '%';
     $params[':search_name'] = $searchTerm;
     $params[':search_username'] = $searchTerm;
     $params[':search_email'] = $searchTerm;
     $params[':search_student_id'] = $searchTerm;
+    $params[':search_department'] = $searchTerm;
+    $params[':search_semester'] = $searchTerm;
     $params[':search_staff_name'] = $searchTerm;
 }
 $whereSql = implode(' AND ', $where);
@@ -40,7 +42,7 @@ $pages = max(1, (int) ceil($total / $perPage));
 $page = min($page, $pages);
 $offset = ($page - 1) * $perPage;
 $rowsStmt = $pdo->prepare(
-    'SELECT u.id, u.full_name, u.username, u.email, u.student_id, u.approval_status,
+    'SELECT u.id, u.full_name, u.username, u.email, u.student_id, u.department_faculty, u.semester_year, u.approval_status,
             u.created_at, staff.full_name AS staff_name
      ' . $fromSql . '
      ORDER BY FIELD(u.approval_status, \'pending\', \'rejected\', \'approved\'), u.created_at DESC
@@ -98,11 +100,11 @@ include 'includes/header.php';
   <div class="table-wrap list-table-wrap">
     <table class="list-table">
       <thead>
-        <tr><th>Student ID</th><th>Name</th><th>Username</th><th>Email</th><th>Created by staff</th><th>Created</th><th>Approval</th><th>Action</th></tr>
+        <tr><th>Student ID</th><th>Name</th><th>Username</th><th>Email</th><th>Department / Faculty</th><th>Semester / Year</th><th>Created by staff</th><th>Created</th><th>Approval</th><th>Action</th></tr>
       </thead>
       <tbody>
         <?php if (!$students): ?>
-          <tr><td colspan="8"><div class="empty-state"><h3>No student identities found</h3><p>Try another search or approval filter.</p></div></td></tr>
+          <tr><td colspan="10"><div class="empty-state"><h3>No student identities found</h3><p>Try another search or approval filter.</p></div></td></tr>
         <?php else: ?>
           <?php foreach ($students as $student): ?>
             <tr>
@@ -110,6 +112,8 @@ include 'includes/header.php';
               <td><?php echo htmlspecialchars($student['full_name'], ENT_QUOTES, 'UTF-8'); ?></td>
               <td><?php echo htmlspecialchars($student['username'], ENT_QUOTES, 'UTF-8'); ?></td>
               <td><?php echo htmlspecialchars($student['email'], ENT_QUOTES, 'UTF-8'); ?></td>
+              <td><?php echo htmlspecialchars((string) ($student['department_faculty'] ?: '-'), ENT_QUOTES, 'UTF-8'); ?></td>
+              <td><?php echo htmlspecialchars((string) ($student['semester_year'] ?: '-'), ENT_QUOTES, 'UTF-8'); ?></td>
               <td><?php echo htmlspecialchars((string) ($student['staff_name'] ?? 'Staff account'), ENT_QUOTES, 'UTF-8'); ?></td>
               <td><?php echo htmlspecialchars(date('Y-m-d H:i', strtotime($student['created_at'])), ENT_QUOTES, 'UTF-8'); ?></td>
               <td><span class="badge <?php echo $student['approval_status'] === 'approved' ? 'badge-student' : ($student['approval_status'] === 'pending' ? 'badge-visitor' : 'badge-danger'); ?>"><?php echo htmlspecialchars(ucfirst($student['approval_status']), ENT_QUOTES, 'UTF-8'); ?></span></td>

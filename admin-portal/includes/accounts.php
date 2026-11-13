@@ -206,6 +206,10 @@ function account_audit_changes(array $before, array $after): string
         'role' => 'Role',
         'student_id' => 'Student ID',
         'staff_id' => 'Staff ID',
+        'department_faculty' => 'Department / Faculty',
+        'semester_year' => 'Semester / Year',
+        'staff_department' => 'Staff Department',
+        'staff_role' => 'Staff Role',
     ];
     $changes = [];
     foreach ($fields as $field => $label) {
@@ -256,6 +260,10 @@ function account_validate_payload(PDO $pdo, array $payload, ?int $existingId = n
         'username' => trim((string) ($payload['username'] ?? '')),
         'student_id' => '',
         'staff_id' => '',
+        'department_faculty' => trim((string) ($payload['department_faculty'] ?? '')),
+        'semester_year' => trim((string) ($payload['semester_year'] ?? '')),
+        'staff_department' => trim((string) ($payload['staff_department'] ?? '')),
+        'staff_role' => trim((string) ($payload['staff_role'] ?? '')),
     ];
     $accountId = trim((string) ($payload['account_id'] ?? ''));
 
@@ -286,6 +294,14 @@ function account_validate_payload(PDO $pdo, array $payload, ?int $existingId = n
         } elseif (account_student_id_exists($pdo, $clean['student_id'], $existingId)) {
             $errors['student_id'] = 'This student ID is already in use.';
         }
+        if (!account_option_exists($pdo, 'student', 'departments', $clean['department_faculty'])) {
+            $errors['department_faculty'] = 'Choose a valid department or faculty.';
+        }
+        if (!account_option_exists($pdo, 'student', 'semesters', $clean['semester_year'], $clean['department_faculty'])) {
+            $errors['semester_year'] = 'Choose a valid semester or year for the selected department.';
+        }
+        $clean['staff_department'] = '';
+        $clean['staff_role'] = '';
     } else {
         $clean['staff_id'] = $accountId;
         if (!account_is_valid_student_id($clean['staff_id'])) {
@@ -293,9 +309,31 @@ function account_validate_payload(PDO $pdo, array $payload, ?int $existingId = n
         } elseif (account_staff_id_exists($pdo, $clean['staff_id'], $existingId)) {
             $errors['staff_id'] = 'This staff ID is already in use.';
         }
+        if (!account_option_exists($pdo, 'staff', 'departments', $clean['staff_department'])) {
+            $errors['staff_department'] = 'Choose a valid staff department.';
+        }
+        if (!account_option_exists($pdo, 'staff', 'roles', $clean['staff_role'])) {
+            $errors['staff_role'] = 'Choose a valid staff role.';
+        }
+        $clean['department_faculty'] = '';
+        $clean['semester_year'] = '';
     }
 
     return ['errors' => $errors, 'clean' => $clean];
+}
+
+function account_option_exists(PDO $pdo, string $portal, string $group, string $value, ?string $parent = null): bool
+{
+    if ($value === '') return false;
+    $sql = 'SELECT 1 FROM feedback_dropdown_options WHERE portal = :portal AND option_group = :option_group AND option_value = :option_value';
+    $params = [':portal' => $portal, ':option_group' => $group, ':option_value' => $value];
+    if ($parent !== null) {
+        $sql .= ' AND parent_value = :parent_value';
+        $params[':parent_value'] = $parent;
+    }
+    $stmt = $pdo->prepare($sql . ' LIMIT 1');
+    $stmt->execute($params);
+    return (bool) $stmt->fetchColumn();
 }
 
 function account_select_users(PDO $pdo, array $filters, int $limit, int $offset): array
@@ -308,7 +346,7 @@ function account_select_users(PDO $pdo, array $filters, int $limit, int $offset)
         $params[':role'] = $filters['role'];
     }
     if (!empty($filters['search'])) {
-        $where[] = '(LOWER(u.full_name) LIKE :search OR LOWER(u.email) LIKE :search OR LOWER(u.username) LIKE :search OR LOWER(u.student_id) LIKE :search OR LOWER(u.staff_id) LIKE :search)';
+        $where[] = '(LOWER(u.full_name) LIKE :search OR LOWER(u.email) LIKE :search OR LOWER(u.username) LIKE :search OR LOWER(u.student_id) LIKE :search OR LOWER(u.staff_id) LIKE :search OR LOWER(u.department_faculty) LIKE :search OR LOWER(u.semester_year) LIKE :search OR LOWER(u.staff_department) LIKE :search OR LOWER(u.staff_role) LIKE :search)';
         $params[':search'] = '%' . strtolower($filters['search']) . '%';
     }
     if (!empty($filters['status'])) {
@@ -352,7 +390,7 @@ function account_count_users(PDO $pdo, array $filters): int
         $params[':role'] = $filters['role'];
     }
     if (!empty($filters['search'])) {
-        $where[] = '(LOWER(full_name) LIKE :search OR LOWER(email) LIKE :search OR LOWER(username) LIKE :search OR LOWER(student_id) LIKE :search OR LOWER(staff_id) LIKE :search)';
+        $where[] = '(LOWER(full_name) LIKE :search OR LOWER(email) LIKE :search OR LOWER(username) LIKE :search OR LOWER(student_id) LIKE :search OR LOWER(staff_id) LIKE :search OR LOWER(department_faculty) LIKE :search OR LOWER(semester_year) LIKE :search OR LOWER(staff_department) LIKE :search OR LOWER(staff_role) LIKE :search)';
         $params[':search'] = '%' . strtolower($filters['search']) . '%';
     }
     if (!empty($filters['status'])) {

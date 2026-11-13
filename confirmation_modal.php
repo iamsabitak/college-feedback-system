@@ -38,7 +38,11 @@
   document.addEventListener('submit', function (event) {
     var form = event.target;
     if (!form.matches('[data-confirm]') || form.dataset.confirmed === 'true') { if (form.dataset.confirmed) delete form.dataset.confirmed; return; }
-    event.preventDefault(); pendingForm = form; pendingSubmitter = event.submitter || null;
+    event.preventDefault();
+    // This handler runs during capture. Stop the original submit from reaching
+    // the form's own submit listener until the user explicitly confirms.
+    event.stopImmediatePropagation();
+    pendingForm = form; pendingSubmitter = event.submitter || null;
     parentDialog = form.closest('dialog');
     // A native dialog is in the browser's top layer, above every z-index.
     // Close it while the shared confirmation is displayed, then restore it on cancel.

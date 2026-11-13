@@ -1,0 +1,26 @@
+/* Shared academic/staff profile dropdown treatment. */
+.portal-profile-workspace .profile-row select {
+  width: 100%;
+  min-height: 42px;
+  box-sizing: border-box;
+  padding: 8px 38px 8px 11px;
+  border: 1px solid #dedbd3;
+  border-radius: 8px;
+  appearance: none;
+  background-color: #fcfbf8;
+  background-image: linear-gradient(45deg, transparent 50%, #466381 50%), linear-gradient(135deg, #466381 50%, transparent 50%);
+  background-position: calc(100% - 17px) 18px, calc(100% - 12px) 18px;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  color: #152a45;
+  font: 13px Inter, Arial, sans-serif;
+  cursor: pointer;
+  transition: border-color .16s ease, box-shadow .16s ease, background-color .16s ease;
+}
+.portal-profile-workspace .profile-row select:hover { border-color: #aebbc9; background-color: #fff; }
+.portal-profile-workspace .profile-row select:focus { outline: none; border-color: #315b95; background-color: #fff; box-shadow: 0 0 0 3px rgba(49,91,149,.11); }
+.portal-profile-workspace .profile-row select:disabled { background-color: #f0efea; color: #64748b; cursor: not-allowed; }
+
+/* Keep all left-card contact and academic icons aligned. */
+.portal-profile-workspace .admin-profile-summary dt { display: flex; align-items: center; gap: 7px; }
+.portal-profile-workspace .admin-profile-summary dt svg { width: 16px; height: 16px; flex: 0 0 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }

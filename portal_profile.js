@@ -14,6 +14,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const panels = [...profile.querySelectorAll('[data-profile-panel]')];
     tabs.forEach((tab) => tab.addEventListener('click', () => { tabs.forEach((item) => { const active = item === tab; item.classList.toggle('active', active); item.setAttribute('aria-selected', String(active)); }); panels.forEach((panel) => { panel.hidden = panel.dataset.profilePanel !== tab.dataset.profileTab; panel.classList.toggle('active', !panel.hidden); }); }));
   });
+  const profileDepartment = document.getElementById('profile_department_faculty');
+  const profileSemester = document.getElementById('profile_semester_year');
+  if (profileDepartment && profileSemester && window.portalProfileSemesters) {
+    const populateSemesters = (selected = '') => {
+      profileSemester.replaceChildren(new Option('Choose semester / year', ''));
+      (window.portalProfileSemesters[profileDepartment.value] || []).forEach((option) => profileSemester.add(new Option(option, option, false, option === selected)));
+    };
+    populateSemesters(window.portalProfileSelectedSemester || '');
+    profileDepartment.addEventListener('change', () => populateSemesters());
+  }
   document.querySelectorAll('[data-portal-otp-form]').forEach((form) => { const boxes = [...form.querySelectorAll('[data-portal-otp-digit]')]; const hidden = form.querySelector('[data-portal-otp-code]'); const sync = () => { hidden.value = boxes.map((box) => box.value).join(''); }; boxes.forEach((box, index) => box.addEventListener('input', () => { box.value = box.value.replace(/\D/g, '').slice(0, 1); sync(); if (box.value && boxes[index + 1]) boxes[index + 1].focus(); })); form.querySelectorAll('[data-portal-password-toggle]').forEach((button) => button.addEventListener('click', () => { const input = document.getElementById(button.dataset.portalPasswordToggle); input.type = input.type === 'password' ? 'text' : 'password'; button.textContent = input.type === 'password' ? 'Show' : 'Hide'; })); const timer = form.dataset.otpExpires * 1000; const display = form.querySelector('[data-portal-otp-countdown]'); const tick = () => { const seconds = Math.max(0, Math.ceil((timer - Date.now()) / 1000)); display.textContent = Math.floor(seconds / 60) + ':' + String(seconds % 60).padStart(2, '0'); }; tick(); setInterval(tick, 1000); });
   const resendButton = document.querySelector('button[form="portalOtpResend"]');
   if (resendButton && window.portalProfileResendAt) {

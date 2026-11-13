@@ -19,6 +19,10 @@ function processPortalAccountPost(PDO $pdo, int $portalUserId, int $linkedUserId
         $fullName = trim((string) ($_POST['full_name'] ?? ''));
         $username = trim((string) ($_POST['username'] ?? ''));
         $phone = trim((string) ($_POST['phone'] ?? ''));
+        $departmentFaculty = trim((string) ($_POST['department_faculty'] ?? ''));
+        $semesterYear = trim((string) ($_POST['semester_year'] ?? ''));
+        $staffDepartment = trim((string) ($_POST['staff_department'] ?? ''));
+        $staffRole = trim((string) ($_POST['staff_role'] ?? ''));
         $nameLength = function_exists('mb_strlen') ? mb_strlen($fullName, 'UTF-8') : strlen($fullName);
 
         if ($fullName === '' || $nameLength > 100) {
@@ -30,6 +34,20 @@ function processPortalAccountPost(PDO $pdo, int $portalUserId, int $linkedUserId
         $phoneDigits = preg_replace('/\D/', '', $phone);
         if ($phone !== '' && (!preg_match('/^\+?[0-9][0-9 ()-]{5,18}$/', $phone) || strlen($phoneDigits) < 7 || strlen($phoneDigits) > 15)) {
             return ['Enter a valid phone number with 7 to 15 digits.', $notice];
+        }
+        $optionExists = static function (string $portal, string $group, string $value, ?string $parent = null) use ($pdo): bool {
+            if ($value === '') return false;
+            $sql = 'SELECT 1 FROM feedback_dropdown_options WHERE portal = :portal AND option_group = :option_group AND option_value = :option_value';
+            $params = [':portal' => $portal, ':option_group' => $group, ':option_value' => $value];
+            if ($parent !== null) { $sql .= ' AND parent_value = :parent_value'; $params[':parent_value'] = $parent; }
+            $stmt = $pdo->prepare($sql . ' LIMIT 1'); $stmt->execute($params);
+            return (bool) $stmt->fetchColumn();
+        };
+        if ($role === 'student' && (!$optionExists('student', 'departments', $departmentFaculty) || !$optionExists('student', 'semesters', $semesterYear, $departmentFaculty))) {
+            return ['Choose a valid department/faculty and semester/year.', $notice];
+        }
+        if ($role === 'staff' && (!$optionExists('staff', 'departments', $staffDepartment) || !$optionExists('staff', 'roles', $staffRole))) {
+            return ['Choose a valid staff department and staff role.', $notice];
         }
 
         $portalUsername = $pdo->prepare('SELECT id FROM portal_users WHERE LOWER(username) = LOWER(:username) AND id <> :id LIMIT 1');
@@ -48,17 +66,21 @@ function processPortalAccountPost(PDO $pdo, int $portalUserId, int $linkedUserId
 
         try {
             $pdo->beginTransaction();
-            $updatePortal = $pdo->prepare('UPDATE portal_users SET full_name = :full_name, username = :username, phone = :phone WHERE id = :id AND role = :role');
-            $updatePortal->execute([':full_name' => $fullName, ':username' => $username, ':phone' => $phone ?: null, ':id' => $portalUserId, ':role' => $role]);
+            $updatePortal = $pdo->prepare('UPDATE portal_users SET full_name = :full_name, username = :username, phone = :phone, department_faculty = :department_faculty, semester_year = :semester_year, staff_department = :staff_department, staff_role = :staff_role WHERE id = :id AND role = :role');
+            $updatePortal->execute([':full_name' => $fullName, ':username' => $username, ':phone' => $phone ?: null, ':department_faculty' => $role === 'student' ? $departmentFaculty : null, ':semester_year' => $role === 'student' ? $semesterYear : null, ':staff_department' => $role === 'staff' ? $staffDepartment : null, ':staff_role' => $role === 'staff' ? $staffRole : null, ':id' => $portalUserId, ':role' => $role]);
             if ($linkedUserId > 0) {
-                $updateManaged = $pdo->prepare('UPDATE users SET full_name = :full_name, username = :username, phone = :phone WHERE id = :id AND role = :role');
-                $updateManaged->execute([':full_name' => $fullName, ':username' => $username, ':phone' => $phone ?: null, ':id' => $linkedUserId, ':role' => $role]);
+                $updateManaged = $pdo->prepare('UPDATE users SET full_name = :full_name, username = :username, phone = :phone, department_faculty = :department_faculty, semester_year = :semester_year, staff_department = :staff_department, staff_role = :staff_role WHERE id = :id AND role = :role');
+                $updateManaged->execute([':full_name' => $fullName, ':username' => $username, ':phone' => $phone ?: null, ':department_faculty' => $role === 'student' ? $departmentFaculty : null, ':semester_year' => $role === 'student' ? $semesterYear : null, ':staff_department' => $role === 'staff' ? $staffDepartment : null, ':staff_role' => $role === 'staff' ? $staffRole : null, ':id' => $linkedUserId, ':role' => $role]);
             }
             notifyAllAdministrators($pdo, 'identity_update', ucfirst($role) . ' identity updated', $fullName . ' updated their profile details.');
             $pdo->commit();
             $account['full_name'] = $fullName;
             $account['username'] = $username;
             $account['phone'] = $phone;
+            $account['department_faculty'] = $role === 'student' ? $departmentFaculty : null;
+            $account['semester_year'] = $role === 'student' ? $semesterYear : null;
+            $account['staff_department'] = $role === 'staff' ? $staffDepartment : null;
+            $account['staff_role'] = $role === 'staff' ? $staffRole : null;
             $notice = 'Profile details updated.';
         } catch (Throwable $exception) {
             if ($pdo->inTransaction()) {

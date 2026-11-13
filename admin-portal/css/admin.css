@@ -178,7 +178,7 @@ tbody tr.removing{animation:row-remove .24s ease-in forwards;}@keyframes row-ent
 .modal-box h3{font-family:var(--serif); color:var(--navy); margin:0 0 10px; font-size:18px;}
 .modal-box p{color:var(--ink-soft); font-size:14px; margin:0 0 22px;}
 .modal-actions{display:flex; justify-content:flex-end; gap:10px;}
-.feedback-modal-box{max-width:680px; max-height:calc(100vh - 40px); overflow:auto;}
+.feedback-modal-box{max-width:680px; max-height:calc(100vh - 40px); overflow:auto; border:1px solid var(--line); border-radius:18px;}
 .feedback-modal-header{display:flex; justify-content:space-between; gap:16px; padding-bottom:20px; margin-bottom:22px; border-bottom:1px solid var(--line);}
 .feedback-modal-header .detail-meta{margin-bottom:8px;}
 .feedback-modal-header .detail-date{margin:0;}
