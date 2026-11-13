@@ -19,6 +19,29 @@ select:hover { border-color: #aebbc9; background-color: #fff; }
 select:focus { outline: none; border-color: #315b95; background-color: #fff; box-shadow: 0 0 0 3px rgba(49,91,149,.11); }
 select:disabled { background-color: #f0efea; color: #64748b; cursor: not-allowed; }
 
+/* Admin-specific controls set their own background shorthand, which would
+   otherwise clear the shared arrow image. Keep the arrow visible in every
+   filter, approval, audit, status, account, and pagination dropdown. */
+.filter-group select,
+.filter-panel-grid select,
+.filter-panel select,
+.filter-bar select,
+.account-category-control select,
+.account-editor-form select,
+.account-filter-form select,
+.status-control select,
+.modal-status-disclosure .status-control select,
+.table-status-form select,
+.pagination-size-form select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 38px;
+  background-image: linear-gradient(45deg, transparent 50%, #466381 50%), linear-gradient(135deg, #466381 50%, transparent 50%);
+  background-position: calc(100% - 17px) 50%, calc(100% - 12px) 50%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+}
+
 /* The Feedback History filters use more specific page styles, so restate the
    profile-style arrow here to keep the Student and Staff filter controls equal. */
 .portal-feedback-filters select {
