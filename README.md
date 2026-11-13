@@ -19,7 +19,7 @@ college-feedback-system/
 │   ├── migration_users.sql        ← Student/staff user table and account audit model
 │   ├── migration_status_log.sql   ← Feedback status log / audit history
 │   ├── migration_portal_feedback_fields.sql ← Student/staff feedback fields and attachments
-│   └── college_feedback.sql      ← Legacy schema dump for reference
+│   ├── migration_account_academic_info.sql ← Student academic and staff employment information
 ├── composer.json       ← PHPMailer dependency
 ├── index.php           ← Portal landing page with Student, Staff, and Admin entry points
 ├── PROJECT_DOCUMENTATION.md
@@ -49,6 +49,7 @@ The project provides protected student, staff, and administrator portal flows.
    mysql -u root -proot < database/migration_student_approvals.sql
    mysql -u root -proot < database/migration_status_log.sql
    mysql -u root -proot < database/migration_portal_feedback_fields.sql
+   mysql -u root -proot < database/migration_account_academic_info.sql
    ```
 5. Visit:
    - Student portal: `http://localhost/college-feedback-system/student-portal/login.php`

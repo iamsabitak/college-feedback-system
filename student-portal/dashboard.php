@@ -32,7 +32,7 @@ $feedbackNotice = $_SESSION['portal_feedback_notice'] ?? null;
 unset($_SESSION['portal_feedback_notice']);
 
 $userStmt = $pdo->prepare(
-  'SELECT p.id, p.full_name, p.username, p.email, p.phone, u.id AS account_user_id
+  'SELECT p.id, p.full_name, p.username, p.email, p.phone, p.department_faculty, p.semester_year, u.id AS account_user_id
    FROM portal_users p
    LEFT JOIN users u ON LOWER(u.email) = LOWER(p.email) AND u.role = \'student\'
    WHERE p.id = :id LIMIT 1'
@@ -219,6 +219,7 @@ $feedbackStatusFilter = (string) ($_GET['status'] ?? '');
 $feedbackVisibilityFilter = (string) ($_GET['visibility'] ?? '');
 if (!in_array($feedbackStatusFilter, ['', 'New', 'Reviewed', 'Resolved'], true)) $feedbackStatusFilter = '';
 if (!in_array($feedbackVisibilityFilter, ['', 'identified', 'anonymous'], true)) $feedbackVisibilityFilter = '';
+$feedbackActiveFilterCount = ($feedbackDate !== '' ? 1 : 0) + ($feedbackStatusFilter !== '' ? 1 : 0) + ($feedbackVisibilityFilter !== '' ? 1 : 0);
 if ($feedbackDate !== '' && !preg_match('/^\\d{4}-\\d{2}-\\d{2}$/', $feedbackDate)) $feedbackDate = '';
 $filteredFeedbackRows = array_values(array_filter($feedbackRows, static function (array $row) use ($feedbackSearch, $feedbackDate, $feedbackStatusFilter, $feedbackVisibilityFilter): bool {
   $haystack = strtolower(implode(' ', [$row['feedback_title'] ?? '', $row['category'] ?? '', $row['message'] ?? '', $row['department_faculty'] ?? '']));
@@ -308,9 +309,12 @@ $weeklyPath = 'M' . str_replace(' ', ' L', $weeklyPoints);
   <link href="https://fonts.googleapis.com/css2?family=Newsreader:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/student.css">
   <link rel="stylesheet" href="../portal_profile.css">
+  <link rel="stylesheet" href="../portal_profile_selects.css">
   <link rel="stylesheet" href="../portal_profile_toast.css">
   <link rel="stylesheet" href="../portal_sidebar.css">
   <link rel="stylesheet" href="../list_ui.css">
+  <link rel="stylesheet" href="../portal_selects.css">
+  <link rel="stylesheet" href="../portal_list_filters.css">
 </head>
 <body class="dashboard-body<?php echo $section === 'feedback-form' && isset($_GET['embed']) ? ' feedback-embed' : ''; ?>">
   <?php
@@ -321,11 +325,9 @@ $weeklyPath = 'M' . str_replace(' ', ' L', $weeklyPoints);
   ?>
 
   <main class="dashboard-main">
-    <?php if ($section !== 'feedback-history'): ?>
     <div class="portal-topbar">
       <nav class="portal-breadcrumb" aria-label="Breadcrumb"><a href="dashboard.php?section=overview">College Feedback</a><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg><span><?php echo htmlspecialchars($sections[$section], ENT_QUOTES, 'UTF-8'); ?></span></nav>
     </div>
-    <?php endif; ?>
     <header class="dashboard-header<?php echo $section === 'account' ? ' profile-page-header' : ''; ?>">
       <div>
         <span class="page-kicker"><?php echo $section === 'overview' ? 'Welcome back' : ($section === 'feedback-history' ? 'Student tools' : 'Student Portal'); ?></span>
@@ -439,7 +441,7 @@ $weeklyPath = 'M' . str_replace(' ', ' L', $weeklyPoints);
       </section>
       <?php if ($feedbackNotice): ?><div class="alert alert-<?php echo $feedbackNotice['type'] === 'error' ? 'error' : 'success'; ?>" role="status"><?php echo htmlspecialchars($feedbackNotice['message'], ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
       <?php if (!$feedbackRows): ?><section class="content-card"><div class="empty-state">No feedback submitted yet.</div></section><?php else: ?>
-        <form method="GET" class="portal-feedback-filters" aria-label="Filter feedback"><input type="hidden" name="section" value="feedback-history"><label><span class="sr-only">Search feedback</span><input type="search" name="q" value="<?php echo htmlspecialchars($feedbackSearch, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Search feedback"></label><label><span>Date</span><input type="date" name="date" value="<?php echo htmlspecialchars($feedbackDate, ENT_QUOTES, 'UTF-8'); ?>"></label><label><span>Status</span><select name="status"><option value="">All statuses</option><?php foreach (['New','Reviewed','Resolved'] as $filterStatus): ?><option value="<?php echo $filterStatus; ?>" <?php echo $feedbackStatusFilter === $filterStatus ? 'selected' : ''; ?>><?php echo $filterStatus; ?></option><?php endforeach; ?></select></label><label><span>Visibility</span><select name="visibility"><option value="">All visibility</option><option value="identified" <?php echo $feedbackVisibilityFilter === 'identified' ? 'selected' : ''; ?>>Identified</option><option value="anonymous" <?php echo $feedbackVisibilityFilter === 'anonymous' ? 'selected' : ''; ?>>Anonymous</option></select></label><button class="btn btn-primary" type="submit">Apply</button><a class="btn btn-outline" href="dashboard.php?section=feedback-history">Clear</a></form>
+        <div class="portal-list-toolbar"><form method="GET" class="portal-live-search" data-portal-live-search><input type="hidden" name="section" value="feedback-history"><?php foreach (['date' => $feedbackDate, 'status' => $feedbackStatusFilter, 'visibility' => $feedbackVisibilityFilter] as $name => $value): if ($value !== ''): ?><input type="hidden" name="<?php echo $name; ?>" value="<?php echo htmlspecialchars($value, ENT_QUOTES, 'UTF-8'); ?>"><?php endif; endforeach; ?><label class="sr-only" for="feedback-history-search">Search feedback</label><input id="feedback-history-search" type="search" name="q" value="<?php echo htmlspecialchars($feedbackSearch, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Search title, topic or comment" autocomplete="off"></form><div class="portal-filter-menu"><button type="button" class="btn btn-outline portal-filter-open" data-portal-filter-open aria-expanded="false" aria-controls="feedbackFilterPanel"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M7 12h10m-7 6h4"/><circle cx="8" cy="6" r="2" fill="currentColor"/><circle cx="15" cy="12" r="2" fill="currentColor"/></svg>Filters<?php if ($feedbackActiveFilterCount): ?><span class="portal-filter-count"><?php echo $feedbackActiveFilterCount; ?></span><?php endif; ?></button><section class="portal-filter-panel" id="feedbackFilterPanel" aria-label="Feedback filters" hidden><form method="GET"><input type="hidden" name="section" value="feedback-history"><?php if ($feedbackSearch !== ''): ?><input type="hidden" name="q" value="<?php echo htmlspecialchars($feedbackSearch, ENT_QUOTES, 'UTF-8'); ?>"><?php endif; ?><div class="portal-filter-grid"><label>Date<input type="date" name="date" value="<?php echo htmlspecialchars($feedbackDate, ENT_QUOTES, 'UTF-8'); ?>"></label><label>Status<select name="status"><option value="">All statuses</option><?php foreach (['New','Reviewed','Resolved'] as $filterStatus): ?><option value="<?php echo $filterStatus; ?>" <?php echo $feedbackStatusFilter === $filterStatus ? 'selected' : ''; ?>><?php echo $filterStatus; ?></option><?php endforeach; ?></select></label><label>Visibility<select name="visibility"><option value="">All visibility</option><option value="identified" <?php echo $feedbackVisibilityFilter === 'identified' ? 'selected' : ''; ?>>Identified</option><option value="anonymous" <?php echo $feedbackVisibilityFilter === 'anonymous' ? 'selected' : ''; ?>>Anonymous</option></select></label></div><div class="portal-filter-actions"><a class="btn btn-outline btn-sm" href="dashboard.php?section=feedback-history">Clear all</a><button class="btn btn-primary btn-sm" type="submit">Apply filters</button></div></form></section></div></div>
         <div class="list-table-card">
           <div class="list-table-wrap"><table class="list-table"><thead><tr><th>Title</th><th>Topic</th><th>Program</th><th>Comment</th><th>Rating</th><th>Satisfaction</th><th>Urgency</th><th>Visibility</th><th>Status</th><th>Submitted</th><th>Actions</th></tr></thead><tbody>
             <?php foreach ($feedbackHistoryRows as $feedbackRow): $isNew = $feedbackRow['status'] === 'New'; ?><tr><td><?php echo htmlspecialchars($feedbackRow['feedback_title'] ?: '—', ENT_QUOTES, 'UTF-8'); ?></td><td><?php echo htmlspecialchars($feedbackRow['category'], ENT_QUOTES, 'UTF-8'); ?></td><td><?php echo htmlspecialchars(trim(($feedbackRow['department_faculty'] ?? '') . ' ' . ($feedbackRow['semester_year'] ?? '')) ?: '—', ENT_QUOTES, 'UTF-8'); ?></td><td class="portal-feedback-message"><?php echo htmlspecialchars($feedbackRow['message'], ENT_QUOTES, 'UTF-8'); ?></td><td><?php echo (int) $feedbackRow['rating']; ?> / 5</td><td><?php echo $feedbackRow['overall_satisfaction'] ? (int) $feedbackRow['overall_satisfaction'] . ' / 5' : '—'; ?></td><td><?php echo htmlspecialchars($feedbackRow['urgency_level'] ?: '—', ENT_QUOTES, 'UTF-8'); ?></td><td><?php echo $feedbackRow['is_anonymous'] ? 'Anonymous' : 'Identified'; ?></td><td><span class="status-badge feedback-status-<?php echo strtolower($feedbackRow['status']); ?>"><?php echo htmlspecialchars($feedbackRow['status'], ENT_QUOTES, 'UTF-8'); ?></span></td><td><?php echo htmlspecialchars(date('d M Y', strtotime($feedbackRow['submit_date'])), ENT_QUOTES, 'UTF-8'); ?></td><td><div class="feedback-row-actions"><?php if ($isNew): ?><button type="button" class="feedback-action" aria-label="Edit feedback" title="Edit feedback" data-send-feedback data-feedback-form-url="dashboard.php?section=feedback-form&amp;embed=1&amp;edit=<?php echo (int) $feedbackRow['id']; ?>"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m4 16.5-.8 4.3 4.3-.8L19 8.5 15.5 5 4 16.5Z"/><path d="m14.5 6 3.5 3.5"/></svg></button><form method="POST" class="feedback-delete-form" data-confirm data-confirm-title="Delete feedback?" data-confirm-message="This feedback entry will be permanently removed." data-confirm-label="Delete" data-confirm-danger="true"><input type="hidden" name="action" value="delete_feedback"><input type="hidden" name="feedback_id" value="<?php echo (int) $feedbackRow['id']; ?>"><input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($feedbackCsrf, ENT_QUOTES, 'UTF-8'); ?>"><button class="feedback-action danger" type="submit" aria-label="Delete feedback" title="Delete feedback"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2m3 0-1 14H6L5 6m5 5v6m4-6v6"/></svg></button></form><?php else: ?><button type="button" class="feedback-action is-locked" aria-label="Edit feedback" title="Only new feedback can be edited" data-feedback-locked><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m4 16.5-.8 4.3 4.3-.8L19 8.5 15.5 5 4 16.5Z"/><path d="m14.5 6 3.5 3.5"/></svg></button><button type="button" class="feedback-action danger is-locked" aria-label="Delete feedback" title="Only new feedback can be deleted" data-feedback-locked><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2m3 0-1 14H6L5 6m5 5v6m4-6v6"/></svg></button><?php endif; ?></div></td></tr><?php endforeach; ?>
@@ -448,7 +450,7 @@ $weeklyPath = 'M' . str_replace(' ', ' L', $weeklyPoints);
         <?php renderPortalPagination($feedbackHistoryTotal, $feedbackHistoryPage, $feedbackHistoryPages, $feedbackHistoryPerPage, $allowedFeedbackPageSizes, ['section' => 'feedback-history', 'q' => $feedbackSearch, 'date' => $feedbackDate, 'status' => $feedbackStatusFilter, 'visibility' => $feedbackVisibilityFilter]); ?>
       <?php endif; ?>
     <?php elseif ($section === 'account'): ?>
-      <?php $portalAccount = $user; $portalRole = 'student'; require __DIR__ . '/../portal_profile_view.php'; ?>
+      <?php $portalAccount = $user; $portalRole = 'student'; $portalProfileOptions = $studentFormOptions; require __DIR__ . '/../portal_profile_view.php'; ?>
     <?php elseif ($section === 'account' && false): ?>
       <?php $profileInitials = strtoupper(substr((string) ($user['full_name'] ?? 'Student'), 0, 1) . substr(strstr((string) ($user['full_name'] ?? ''), ' ') ?: '', 1, 1)); ?>
       <div class="profile-settings portal-profile-settings">
@@ -472,6 +474,7 @@ $weeklyPath = 'M' . str_replace(' ', ' L', $weeklyPoints);
   </main>
   <script src="../portal_feedback_form.js"></script>
   <script src="../portal_profile.js"></script>
+  <script src="../portal_list_filters.js"></script>
   <?php include __DIR__ . '/../confirmation_modal.php'; ?>
   <?php if (isset($_GET['embed'], $_GET['saved'])): ?><script>window.parent.postMessage({type:'portal-feedback-saved'}, window.location.origin);</script><?php endif; ?>
 </body>

@@ -730,17 +730,18 @@ document.addEventListener('DOMContentLoaded', function () {
   });
   document.querySelectorAll('[data-live-search]').forEach(function (form) {
     const input = form.querySelector('input[type="search"]');
+    const searchParam = form.dataset.searchParam || 'q';
     let timer = 0;
     if (!input) return;
     const syncSearchFromUrl = function () {
-      const query = new URLSearchParams(window.location.search).get('q');
+      const query = new URLSearchParams(window.location.search).get(searchParam);
       if (query !== null) input.value = query;
     };
     syncSearchFromUrl();
     input.addEventListener('input', function () {
       window.clearTimeout(timer);
       const searchUrl = new URL(window.location.href);
-      searchUrl.searchParams.set('q', input.value);
+      searchUrl.searchParams.set(searchParam, input.value);
       window.history.replaceState(window.history.state, '', searchUrl.toString());
       timer = window.setTimeout(function () { form.requestSubmit(); }, 280);
     });
@@ -1083,7 +1084,16 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     if (anonymous) anonymous.hidden = !entry.is_anonymous;
     if (status) { status.textContent = entry.status || 'New'; status.className = 'badge badge-' + String(entry.status || 'New').toLowerCase(); }
-    if (statusSelect) statusSelect.value = entry.status || 'New';
+    if (statusSelect) {
+      const resolved = entry.status === 'Resolved';
+      statusSelect.value = entry.status || 'New';
+      statusSelect.disabled = resolved;
+      const updateButton = statusSelect.closest('form')?.querySelector('button[type="submit"]');
+      if (updateButton) {
+        updateButton.disabled = resolved;
+        updateButton.textContent = resolved ? 'Resolved — final' : 'Update status';
+      }
+    }
     if (modalId) modalId.value = entry.id;
     if (deleteButton) { deleteButton.dataset.deleteId = entry.id; deleteButton.dataset.deleteName = entry.display_name || 'this entry'; }
   }
@@ -1208,7 +1218,7 @@ document.addEventListener('DOMContentLoaded', function () {
       if (!selected || (submit && submit.disabled)) return;
       if (submit) submit.disabled = true;
       fetch(form.action, { method: 'POST', body: new FormData(form), headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
-        .then(function (response) { if (!response.ok) throw new Error('Status update failed.'); return response.json(); })
+        .then(async function (response) { const result = await response.json(); if (!response.ok) throw new Error(result.message || 'Status update failed.'); return result; })
         .then(function (result) {
           if (!result.updated) throw new Error('Status update failed.');
           const row = form.closest('[data-feedback-row]');
@@ -1221,10 +1231,14 @@ document.addEventListener('DOMContentLoaded', function () {
             modalBadge.textContent = result.status;
             modalBadge.className = 'badge badge-' + result.status.toLowerCase();
           }
+          if (result.status === 'Resolved') {
+            selected.disabled = true;
+            if (submit) { submit.disabled = true; submit.textContent = 'Resolved — final'; }
+          }
           showToast('Status updated to ' + result.status + '.', 'success');
         })
         .catch(function (error) { showToast(error.message, 'error'); })
-        .finally(function () { if (submit) submit.disabled = false; });
+        .finally(function () { if (submit && selected && selected.value !== 'Resolved') submit.disabled = false; });
     });
   });
 

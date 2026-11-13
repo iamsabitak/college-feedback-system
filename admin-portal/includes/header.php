@@ -23,6 +23,7 @@ if (isset($pdo) && !empty($_SESSION['admin_id'])) {
 <link rel="icon" type="image/svg+xml" href="../assets/logo.svg">
 <link rel="stylesheet" href="css/admin.css">
 <link rel="stylesheet" href="../list_ui.css">
+<link rel="stylesheet" href="../portal_selects.css">
 </head>
 <body class="admin-body">
 

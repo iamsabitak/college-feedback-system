@@ -18,14 +18,37 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' || $id < 1 || !in_array($status, $allo
     exit('Invalid status update.');
 }
 
-$existsStmt = $pdo->prepare('SELECT id FROM feedback WHERE id = :id LIMIT 1');
+$existsStmt = $pdo->prepare('SELECT id, status FROM feedback WHERE id = :id LIMIT 1');
 $existsStmt->execute([':id' => $id]);
-if (!$existsStmt->fetch()) {
+$feedback = $existsStmt->fetch();
+if (!$feedback) {
     http_response_code(404);
     exit('Feedback entry not found.');
 }
-$stmt = $pdo->prepare('UPDATE feedback SET status = :status WHERE id = :id');
+if ($feedback['status'] === 'Resolved') {
+    $message = 'Resolved feedback is final and cannot be changed.';
+    if (str_contains($_SERVER['HTTP_ACCEPT'] ?? '', 'application/json')) {
+        http_response_code(409);
+        header('Content-Type: application/json');
+        echo json_encode(['updated' => false, 'message' => $message, 'status' => 'Resolved']);
+        exit;
+    }
+    header('Location: view_feedback.php?id=' . $id . '&status_error=' . urlencode($message));
+    exit;
+}
+$stmt = $pdo->prepare("UPDATE feedback SET status = :status WHERE id = :id AND status <> 'Resolved'");
 $stmt->execute([':status' => $status, ':id' => $id]);
+if ($stmt->rowCount() === 0 && $status !== 'Resolved') {
+    $message = 'Resolved feedback is final and cannot be changed.';
+    if (str_contains($_SERVER['HTTP_ACCEPT'] ?? '', 'application/json')) {
+        http_response_code(409);
+        header('Content-Type: application/json');
+        echo json_encode(['updated' => false, 'message' => $message, 'status' => 'Resolved']);
+        exit;
+    }
+    header('Location: view_feedback.php?id=' . $id . '&status_error=' . urlencode($message));
+    exit;
+}
 
 if (str_contains($_SERVER['HTTP_ACCEPT'] ?? '', 'application/json')) {
     header('Content-Type: application/json');

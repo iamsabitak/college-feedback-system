@@ -52,6 +52,10 @@ $email = $validation['clean']['email'];
 $username = $validation['clean']['username'];
 $studentId = $validation['clean']['student_id'];
 $staffId = $validation['clean']['staff_id'];
+$departmentFaculty = $validation['clean']['department_faculty'];
+$semesterYear = $validation['clean']['semester_year'];
+$staffDepartment = $validation['clean']['staff_department'];
+$staffRole = $validation['clean']['staff_role'];
 $now = date('Y-m-d H:i:s');
 
 try {
@@ -68,7 +72,7 @@ try {
         }
 
         $stmt = $pdo->prepare(
-            'UPDATE users SET full_name = :full_name, username = :username, email = :email, student_id = :student_id, staff_id = :staff_id, role = :role, updated_at = NOW() WHERE id = :id'
+            'UPDATE users SET full_name = :full_name, username = :username, email = :email, student_id = :student_id, staff_id = :staff_id, department_faculty = :department_faculty, semester_year = :semester_year, staff_department = :staff_department, staff_role = :staff_role, role = :role, updated_at = NOW() WHERE id = :id'
         );
         $stmt->execute([
             ':full_name' => $fullName,
@@ -76,6 +80,10 @@ try {
             ':email' => $email,
             ':student_id' => $studentId !== '' ? $studentId : null,
             ':staff_id' => $staffId !== '' ? $staffId : null,
+            ':department_faculty' => $departmentFaculty !== '' ? $departmentFaculty : null,
+            ':semester_year' => $semesterYear !== '' ? $semesterYear : null,
+            ':staff_department' => $staffDepartment !== '' ? $staffDepartment : null,
+            ':staff_role' => $staffRole !== '' ? $staffRole : null,
             ':role' => $role,
             ':id' => $existingId,
         ]);
@@ -84,17 +92,21 @@ try {
         $portalStmt->execute([':email' => $currentUser['email']]);
         $portalUserId = $portalStmt->fetchColumn();
         if ($portalUserId) {
-            $pdo->prepare('UPDATE portal_users SET role = :role, username = :username, full_name = :full_name, email = :email, status = :status WHERE id = :id')
+            $pdo->prepare('UPDATE portal_users SET role = :role, username = :username, full_name = :full_name, email = :email, department_faculty = :department_faculty, semester_year = :semester_year, staff_department = :staff_department, staff_role = :staff_role, status = :status WHERE id = :id')
                 ->execute([
                     ':role' => $role,
                     ':username' => $username,
                     ':full_name' => $fullName,
                     ':email' => $email,
                     ':status' => $currentUser['status'],
+                    ':department_faculty' => $departmentFaculty !== '' ? $departmentFaculty : null,
+                    ':semester_year' => $semesterYear !== '' ? $semesterYear : null,
+                    ':staff_department' => $staffDepartment !== '' ? $staffDepartment : null,
+                    ':staff_role' => $staffRole !== '' ? $staffRole : null,
                     ':id' => $portalUserId,
                 ]);
         } else {
-            $pdo->prepare('INSERT INTO portal_users (role, username, full_name, email, password_hash, status) VALUES (:role, :username, :full_name, :email, :password_hash, :status)')
+            $pdo->prepare('INSERT INTO portal_users (role, username, full_name, email, department_faculty, semester_year, staff_department, staff_role, password_hash, status) VALUES (:role, :username, :full_name, :email, :department_faculty, :semester_year, :staff_department, :staff_role, :password_hash, :status)')
                 ->execute([
                     ':role' => $role,
                     ':username' => $username,
@@ -102,6 +114,10 @@ try {
                     ':email' => $email,
                     ':password_hash' => $currentUser['password_hash'],
                     ':status' => $currentUser['status'],
+                    ':department_faculty' => $departmentFaculty !== '' ? $departmentFaculty : null,
+                    ':semester_year' => $semesterYear !== '' ? $semesterYear : null,
+                    ':staff_department' => $staffDepartment !== '' ? $staffDepartment : null,
+                    ':staff_role' => $staffRole !== '' ? $staffRole : null,
                 ]);
         }
 
@@ -119,8 +135,8 @@ try {
     $passwordHash = password_hash($tempPassword, PASSWORD_DEFAULT);
     $pdo->beginTransaction();
     $stmt = $pdo->prepare(
-        'INSERT INTO users (full_name, username, email, student_id, staff_id, role, password_hash, status, must_change_password, created_at, updated_at)
-         VALUES (:full_name, :username, :email, :student_id, :staff_id, :role, :password_hash, :status, 1, :created_at, :updated_at)'
+        'INSERT INTO users (full_name, username, email, student_id, staff_id, department_faculty, semester_year, staff_department, staff_role, role, password_hash, status, must_change_password, created_at, updated_at)
+         VALUES (:full_name, :username, :email, :student_id, :staff_id, :department_faculty, :semester_year, :staff_department, :staff_role, :role, :password_hash, :status, 1, :created_at, :updated_at)'
     );
     $stmt->execute([
         ':full_name' => $fullName,
@@ -128,6 +144,10 @@ try {
         ':email' => $email,
         ':student_id' => $studentId !== '' ? $studentId : null,
         ':staff_id' => $staffId !== '' ? $staffId : null,
+        ':department_faculty' => $departmentFaculty !== '' ? $departmentFaculty : null,
+        ':semester_year' => $semesterYear !== '' ? $semesterYear : null,
+        ':staff_department' => $staffDepartment !== '' ? $staffDepartment : null,
+        ':staff_role' => $staffRole !== '' ? $staffRole : null,
         ':role' => $role,
         ':password_hash' => $passwordHash,
         ':status' => 'active',
@@ -136,7 +156,7 @@ try {
     ]);
 
     $newUserId = (int) $pdo->lastInsertId();
-    $pdo->prepare('INSERT INTO portal_users (role, username, full_name, email, password_hash, status) VALUES (:role, :username, :full_name, :email, :password_hash, :status)')
+    $pdo->prepare('INSERT INTO portal_users (role, username, full_name, email, department_faculty, semester_year, staff_department, staff_role, password_hash, status) VALUES (:role, :username, :full_name, :email, :department_faculty, :semester_year, :staff_department, :staff_role, :password_hash, :status)')
         ->execute([
             ':role' => $role,
             ':username' => $username,
@@ -144,6 +164,10 @@ try {
             ':email' => $email,
             ':password_hash' => $passwordHash,
             ':status' => 'active',
+            ':department_faculty' => $departmentFaculty !== '' ? $departmentFaculty : null,
+            ':semester_year' => $semesterYear !== '' ? $semesterYear : null,
+            ':staff_department' => $staffDepartment !== '' ? $staffDepartment : null,
+            ':staff_role' => $staffRole !== '' ? $staffRole : null,
         ]);
     $user = $pdo->prepare('SELECT * FROM users WHERE id = :id LIMIT 1');
     $user->execute([':id' => $newUserId]);

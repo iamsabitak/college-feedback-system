@@ -3,6 +3,10 @@ require 'includes/auth.php';
 require 'includes/db.php';
 require 'includes/accounts.php';
 require __DIR__ . '/../portal_pagination.php';
+require_once __DIR__ . '/../portal_feedback_options.php';
+
+$studentAccountOptions = feedbackFormOptions($pdo, 'student');
+$staffAccountOptions = feedbackFormOptions($pdo, 'staff');
 
 $tab = $_GET['tab'] ?? 'accounts';
 if (in_array($tab, ['students', 'staff'], true)) {
@@ -31,6 +35,10 @@ $page = max(1, (int) ($_GET['page'] ?? 1));
 $offset = ($page - 1) * $perPage;
 
 $roleFilter = $tab === 'accounts' && $category !== 'all' ? $category : null;
+$accountActiveFilterCount = ($category !== 'all' ? 1 : 0)
+    + ($statusFilter !== '' ? 1 : 0)
+    + ($dateFrom !== '' ? 1 : 0)
+    + ($dateTo !== '' ? 1 : 0);
 
 if ($tab === 'audit') {
     $auditFilters = [
@@ -45,6 +53,9 @@ if ($tab === 'audit') {
     $page = min($page, $auditPages);
     $offset = ($page - 1) * $perPage;
     $auditRows = account_select_audit_log($pdo, $auditFilters, $perPage, $offset);
+    $auditActiveFilterCount = ($auditFilters['action'] !== '' ? 1 : 0)
+        + ($dateFrom !== '' ? 1 : 0)
+        + ($dateTo !== '' ? 1 : 0);
 } else {
     $userFilters = [
         'role' => $roleFilter,
@@ -80,59 +91,66 @@ include 'includes/header.php';
 </section>
 
 <?php if ($tab === 'accounts'): ?>
-<div class="table-card" style="margin-bottom:18px;">
-  <div class="filter-bar">
-    <div class="filter-group search" style="flex:1; min-width:220px;">
-      <label for="account-search" style="display:block; margin-bottom:6px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-soft);">Search</label>
-      <input type="search" id="account-search" value="<?php echo htmlspecialchars($search, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Name, username, email or student ID">
+<div class="dashboard-toolbar">
+  <div class="list-toolbar-actions">
+    <form method="GET" class="live-search-form" data-live-search data-search-param="search">
+      <?php foreach (['category' => $category !== 'all' ? $category : '', 'status' => $statusFilter, 'date_from' => $dateFrom, 'date_to' => $dateTo, 'per_page' => $perPage] as $name => $value): if ($value !== ''): ?><input type="hidden" name="<?php echo $name; ?>" value="<?php echo htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8'); ?>"><?php endif; endforeach; ?>
+      <input type="hidden" name="tab" value="accounts">
+      <label class="sr-only" for="account-search">Search accounts</label>
+      <input type="search" id="account-search" name="search" value="<?php echo htmlspecialchars($search, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Search name, username, email or ID" autocomplete="off">
+    </form>
+    <div class="filter-menu-wrap">
+      <button type="button" class="btn btn-outline filter-open" data-filter-open aria-expanded="false" aria-controls="filterPanel">
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M7 12h10m-7 6h4"/><circle cx="8" cy="6" r="2" fill="currentColor"/><circle cx="15" cy="12" r="2" fill="currentColor"/></svg>
+        Filters<?php if ($accountActiveFilterCount): ?><span class="filter-count"><?php echo $accountActiveFilterCount; ?></span><?php endif; ?>
+      </button>
+      <section class="filter-panel" id="filterPanel" aria-label="Account filters" hidden>
+        <form method="GET" class="filter-panel-form">
+          <input type="hidden" name="tab" value="accounts">
+          <input type="hidden" name="per_page" value="<?php echo $perPage; ?>">
+          <?php if ($search !== ''): ?><input type="hidden" name="search" value="<?php echo htmlspecialchars($search, ENT_QUOTES, 'UTF-8'); ?>"><?php endif; ?>
+          <div class="filter-panel-grid">
+            <div class="filter-group"><label for="account-category">Category</label><select id="account-category" name="category"><option value="all" <?php echo $category === 'all' ? 'selected' : ''; ?>>All accounts</option><option value="student" <?php echo $category === 'student' ? 'selected' : ''; ?>>Students</option><option value="staff" <?php echo $category === 'staff' ? 'selected' : ''; ?>>Staff</option></select></div>
+            <div class="filter-group"><label for="filter_status">Status</label><select id="filter_status" name="status"><option value="">All statuses</option><option value="active" <?php echo $statusFilter === 'active' ? 'selected' : ''; ?>>Active</option><option value="disabled" <?php echo $statusFilter === 'disabled' ? 'selected' : ''; ?>>Disabled</option></select></div>
+            <div class="filter-group"><label for="filter_date_from">Last login from</label><input id="filter_date_from" name="date_from" type="date" value="<?php echo htmlspecialchars($dateFrom, ENT_QUOTES, 'UTF-8'); ?>"></div>
+            <div class="filter-group"><label for="filter_date_to">Last login to</label><input id="filter_date_to" name="date_to" type="date" value="<?php echo htmlspecialchars($dateTo, ENT_QUOTES, 'UTF-8'); ?>"></div>
+          </div>
+          <div class="filter-actions"><a href="accounts_manage.php?tab=accounts" class="btn btn-outline btn-sm">Clear all</a><button type="submit" class="btn btn-primary btn-sm">Apply filters</button></div>
+        </form>
+      </section>
     </div>
-    <div class="filter-actions">
-      <?php if ($tab === 'accounts'): ?>
-      <label for="account-category" class="account-category-control">
-        <span>Category</span>
-        <select id="account-category">
-          <option value="all" <?php echo $category === 'all' ? 'selected' : ''; ?>>All accounts</option>
-          <option value="student" <?php echo $category === 'student' ? 'selected' : ''; ?>>Students</option>
-          <option value="staff" <?php echo $category === 'staff' ? 'selected' : ''; ?>>Staff</option>
-        </select>
-      </label>
-      <button type="button" class="btn btn-outline" data-open-filters>Filters</button>
-      <button type="button" class="btn btn-primary" data-open-account-form>+ Add account</button>
-      <?php endif; ?>
-    </div>
+    <button type="button" class="btn btn-primary" data-open-account-form>+ Add account</button>
   </div>
 </div>
 <?php endif; ?>
 
 <?php if ($tab === 'audit'): ?>
-  <form class="filter-bar" method="GET">
-    <input type="hidden" name="tab" value="audit">
-    <div class="filter-group search">
-      <label for="audit-search">Search</label>
-      <input id="audit-search" name="search" type="search" value="<?php echo htmlspecialchars($search, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Admin, action, target or details">
+  <div class="dashboard-toolbar">
+    <div class="list-toolbar-actions">
+      <form method="GET" class="live-search-form" data-live-search data-search-param="search">
+        <input type="hidden" name="tab" value="audit">
+        <input type="hidden" name="per_page" value="<?php echo $perPage; ?>">
+        <?php foreach (['action' => $auditFilters['action'], 'date_from' => $dateFrom, 'date_to' => $dateTo] as $name => $value): if ($value !== ''): ?><input type="hidden" name="<?php echo $name; ?>" value="<?php echo htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8'); ?>"><?php endif; endforeach; ?>
+        <label class="sr-only" for="audit-search">Search audit log</label>
+        <input id="audit-search" name="search" type="search" value="<?php echo htmlspecialchars($search, ENT_QUOTES, 'UTF-8'); ?>" placeholder="Search admin, action, target or details" autocomplete="off">
+      </form>
+      <div class="filter-menu-wrap">
+        <button type="button" class="btn btn-outline filter-open" data-filter-open aria-expanded="false" aria-controls="filterPanel"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M7 12h10m-7 6h4"/><circle cx="8" cy="6" r="2" fill="currentColor"/><circle cx="15" cy="12" r="2" fill="currentColor"/></svg>Filters<?php if ($auditActiveFilterCount): ?><span class="filter-count"><?php echo $auditActiveFilterCount; ?></span><?php endif; ?></button>
+        <section class="filter-panel" id="filterPanel" aria-label="Audit log filters" hidden>
+          <form method="GET" class="filter-panel-form">
+            <input type="hidden" name="tab" value="audit"><input type="hidden" name="per_page" value="<?php echo $perPage; ?>">
+            <?php if ($search !== ''): ?><input type="hidden" name="search" value="<?php echo htmlspecialchars($search, ENT_QUOTES, 'UTF-8'); ?>"><?php endif; ?>
+            <div class="filter-panel-grid">
+              <div class="filter-group"><label for="audit-action">Action</label><select id="audit-action" name="action"><option value="">All actions</option><?php foreach ($auditActions as $auditAction): ?><option value="<?php echo htmlspecialchars($auditAction, ENT_QUOTES, 'UTF-8'); ?>" <?php echo $auditFilters['action'] === $auditAction ? 'selected' : ''; ?>><?php echo htmlspecialchars($auditAction, ENT_QUOTES, 'UTF-8'); ?></option><?php endforeach; ?></select></div>
+              <div class="filter-group"><label for="audit-date-from">From</label><input id="audit-date-from" name="date_from" type="date" value="<?php echo htmlspecialchars($dateFrom, ENT_QUOTES, 'UTF-8'); ?>"></div>
+              <div class="filter-group"><label for="audit-date-to">To</label><input id="audit-date-to" name="date_to" type="date" value="<?php echo htmlspecialchars($dateTo, ENT_QUOTES, 'UTF-8'); ?>"></div>
+            </div>
+            <div class="filter-actions"><a class="btn btn-outline btn-sm" href="accounts_manage.php?tab=audit">Clear all</a><button type="submit" class="btn btn-primary btn-sm">Apply filters</button></div>
+          </form>
+        </section>
+      </div>
     </div>
-    <div class="filter-group">
-      <label for="audit-action">Action</label>
-      <select id="audit-action" name="action">
-        <option value="">All actions</option>
-        <?php foreach ($auditActions as $auditAction): ?>
-          <option value="<?php echo htmlspecialchars($auditAction, ENT_QUOTES, 'UTF-8'); ?>" <?php echo ($auditFilters['action'] ?? '') === $auditAction ? 'selected' : ''; ?>><?php echo htmlspecialchars($auditAction, ENT_QUOTES, 'UTF-8'); ?></option>
-        <?php endforeach; ?>
-      </select>
-    </div>
-    <div class="filter-group">
-      <label for="audit-date-from">From</label>
-      <input id="audit-date-from" name="date_from" type="date" value="<?php echo htmlspecialchars($dateFrom, ENT_QUOTES, 'UTF-8'); ?>">
-    </div>
-    <div class="filter-group">
-      <label for="audit-date-to">To</label>
-      <input id="audit-date-to" name="date_to" type="date" value="<?php echo htmlspecialchars($dateTo, ENT_QUOTES, 'UTF-8'); ?>">
-    </div>
-    <div class="filter-actions">
-      <button type="submit" class="btn btn-primary">Apply</button>
-      <a class="btn btn-outline" href="accounts_manage.php?tab=audit">Clear</a>
-    </div>
-  </form>
+  </div>
   <div class="table-card list-table-card pagination-contained">
     <div class="table-wrap list-table-wrap">
       <table class="list-table">
@@ -174,6 +192,10 @@ include 'includes/header.php';
             <th>Email</th>
             <th>Username</th>
             <th>ID</th>
+            <th>Department / Faculty</th>
+            <th>Semester / Year</th>
+            <th>Staff department</th>
+            <th>Staff role</th>
             <th>Status</th>
             <th>Last login</th>
             <th>Named submissions</th>
@@ -182,7 +204,7 @@ include 'includes/header.php';
         </thead>
         <tbody>
           <?php if (empty($userRows)): ?>
-            <tr><td colspan="8"><div class="empty-state"><h3>No accounts found</h3><p>Try another category or create a new account.</p></div></td></tr>
+            <tr><td colspan="12"><div class="empty-state"><h3>No accounts found</h3><p>Try another category or create a new account.</p></div></td></tr>
           <?php else: ?>
             <?php foreach ($userRows as $user): ?>
               <tr>
@@ -193,6 +215,10 @@ include 'includes/header.php';
                 <td><?php echo htmlspecialchars($user['email'], ENT_QUOTES, 'UTF-8'); ?></td>
                 <td><?php echo htmlspecialchars((string) ($user['username'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
                 <td><?php echo htmlspecialchars((string) ($user['role'] === 'student' ? ($user['student_id'] ?? '-') : ($user['staff_id'] ?? '-')), ENT_QUOTES, 'UTF-8'); ?></td>
+                <td><?php echo htmlspecialchars((string) ($user['department_faculty'] ?: '-'), ENT_QUOTES, 'UTF-8'); ?></td>
+                <td><?php echo htmlspecialchars((string) ($user['semester_year'] ?: '-'), ENT_QUOTES, 'UTF-8'); ?></td>
+                <td><?php echo htmlspecialchars((string) ($user['staff_department'] ?: '-'), ENT_QUOTES, 'UTF-8'); ?></td>
+                <td><?php echo htmlspecialchars((string) ($user['staff_role'] ?: '-'), ENT_QUOTES, 'UTF-8'); ?></td>
                 <td><span class="badge <?php echo $user['status'] === 'active' ? 'badge-student' : 'badge-danger'; ?>"><?php echo htmlspecialchars($user['status'] === 'active' ? 'Active' : 'Disabled', ENT_QUOTES, 'UTF-8'); ?></span></td>
                 <td><?php echo htmlspecialchars($user['last_login'] ? date('Y-m-d H:i', strtotime($user['last_login'])) : 'Never', ENT_QUOTES, 'UTF-8'); ?></td>
                 <td><?php echo (int) ($user['named_submissions'] ?? 0); ?></td>
@@ -216,43 +242,6 @@ include 'includes/header.php';
     <?php renderPortalPagination($userTotal, $page, $userPages, $perPage, [10, 20, 50], $paginationQueryParams); ?>
   </div>
 <?php endif; ?>
-
-<div id="accountFiltersModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="accountFiltersTitle">
-  <div class="modal-box account-filter-box">
-    <div class="feedback-modal-header account-filter-header">
-      <div><h3 id="accountFiltersTitle">Filters</h3><p>Refine the current account list</p></div>
-      <button type="button" class="modal-close" data-close-filter-modal aria-label="Close filters">&times;</button>
-    </div>
-    <form method="GET" id="accountFilterForm" class="account-filter-form">
-      <input type="hidden" name="tab" value="<?php echo htmlspecialchars($tab, ENT_QUOTES, 'UTF-8'); ?>">
-      <input type="hidden" name="category" value="<?php echo htmlspecialchars($category, ENT_QUOTES, 'UTF-8'); ?>">
-      <input type="hidden" name="search" value="<?php echo htmlspecialchars($search, ENT_QUOTES, 'UTF-8'); ?>">
-      <input type="hidden" name="per_page" value="<?php echo $perPage; ?>">
-      <div class="field">
-        <label for="filter_status">Status</label>
-        <select id="filter_status" name="status">
-          <option value="">All statuses</option>
-          <option value="active" <?php echo $statusFilter === 'active' ? 'selected' : ''; ?>>Active</option>
-          <option value="disabled" <?php echo $statusFilter === 'disabled' ? 'selected' : ''; ?>>Disabled</option>
-        </select>
-      </div>
-      <div class="account-filter-dates">
-        <div class="field">
-          <label for="filter_date_from">Last login from</label>
-          <input id="filter_date_from" name="date_from" type="date" value="<?php echo htmlspecialchars($dateFrom, ENT_QUOTES, 'UTF-8'); ?>">
-        </div>
-        <div class="field">
-          <label for="filter_date_to">Last login to</label>
-          <input id="filter_date_to" name="date_to" type="date" value="<?php echo htmlspecialchars($dateTo, ENT_QUOTES, 'UTF-8'); ?>">
-        </div>
-      </div>
-      <div class="modal-actions">
-        <button type="button" class="btn btn-outline" data-close-filter-modal>Cancel</button>
-        <button type="submit" class="btn btn-primary">Apply filters</button>
-      </div>
-    </form>
-  </div>
-</div>
 
 <div id="accountModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="accountModalTitle">
   <div class="modal-box account-editor-box">
@@ -285,6 +274,31 @@ include 'includes/header.php';
       <div class="field account-field-full">
         <label id="account_id_label" for="account_id">Student ID</label>
         <input id="account_id" name="account_id" type="text" maxlength="30" placeholder="Enter student ID" required>
+      </div>
+      <div class="field account-field-half" data-account-student-field>
+        <label for="account_department_faculty">Department / Faculty</label>
+        <select id="account_department_faculty" name="department_faculty">
+          <option value="">Choose department / faculty</option>
+          <?php foreach ($studentAccountOptions['departments'] ?? [] as $option): ?><option value="<?php echo htmlspecialchars($option, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($option, ENT_QUOTES, 'UTF-8'); ?></option><?php endforeach; ?>
+        </select>
+      </div>
+      <div class="field account-field-half" data-account-student-field>
+        <label for="account_semester_year">Semester / Year</label>
+        <select id="account_semester_year" name="semester_year"><option value="">Choose department first</option></select>
+      </div>
+      <div class="field account-field-half" data-account-staff-field hidden>
+        <label for="account_staff_department">Staff department</label>
+        <select id="account_staff_department" name="staff_department">
+          <option value="">Choose staff department</option>
+          <?php foreach ($staffAccountOptions['departments'] ?? [] as $option): ?><option value="<?php echo htmlspecialchars($option, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($option, ENT_QUOTES, 'UTF-8'); ?></option><?php endforeach; ?>
+        </select>
+      </div>
+      <div class="field account-field-half" data-account-staff-field hidden>
+        <label for="account_staff_role">Staff role</label>
+        <select id="account_staff_role" name="staff_role">
+          <option value="">Choose staff role</option>
+          <?php foreach ($staffAccountOptions['roles'] ?? [] as $option): ?><option value="<?php echo htmlspecialchars($option, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($option, ENT_QUOTES, 'UTF-8'); ?></option><?php endforeach; ?>
+        </select>
       </div>
       <div id="accountFormErrors" class="alert alert-error" aria-live="polite" style="display:none;"></div>
       <div class="modal-actions">
@@ -357,13 +371,20 @@ include 'includes/header.php';
 
 <script>
 const tab = '<?php echo htmlspecialchars($tab, ENT_QUOTES, 'UTF-8'); ?>';
-const filterModal = document.getElementById('accountFiltersModal');
 const accountModal = document.getElementById('accountModal');
 const tempModal = document.getElementById('tempPasswordModal');
 const accountRoleInput = document.getElementById('account_role');
 const accountForm = document.getElementById('accountForm');
 const formErrors = document.getElementById('accountFormErrors');
+const accountSemesterOptions = <?php echo json_encode($studentAccountOptions['semesters'] ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
 let reloadAfterPassword = false;
+
+function setSemesterOptions(selected = '') {
+  const department = document.getElementById('account_department_faculty').value;
+  const semesterSelect = document.getElementById('account_semester_year');
+  semesterSelect.replaceChildren(new Option(department ? 'Choose semester / year' : 'Choose department first', ''));
+  (accountSemesterOptions[department] || []).forEach((option) => semesterSelect.add(new Option(option, option, false, option === selected)));
+}
 
 function openModal(modal) {
   modal.classList.add('open');
@@ -376,10 +397,7 @@ function closeModal(modal) {
   }
 }
 
-if (document.querySelector('[data-open-filters]')) {
-  document.querySelector('[data-open-filters]').addEventListener('click', () => openModal(filterModal));
-}
-['data-close-filter-modal', 'data-close-account-modal', 'data-close-temp-password'].forEach((selector) => {
+['data-close-account-modal', 'data-close-temp-password'].forEach((selector) => {
   document.querySelectorAll('[' + selector + ']').forEach((button) => {
     button.addEventListener('click', () => {
       const modal = button.closest('.modal-overlay');
@@ -398,11 +416,16 @@ function setFormRole(role) {
   });
   document.getElementById('account_id_label').textContent = roleName === 'student' ? 'Student ID' : 'Staff ID';
   document.getElementById('account_id').placeholder = roleName === 'student' ? 'Enter student ID' : 'Enter staff ID';
+  document.querySelectorAll('[data-account-student-field]').forEach((field) => { field.hidden = roleName !== 'student'; field.querySelector('select').disabled = roleName !== 'student'; field.querySelector('select').required = roleName === 'student'; });
+  document.querySelectorAll('[data-account-staff-field]').forEach((field) => { field.hidden = roleName !== 'staff'; field.querySelector('select').disabled = roleName !== 'staff'; field.querySelector('select').required = roleName === 'staff'; });
+  if (roleName === 'student') setSemesterOptions(document.getElementById('account_semester_year').value);
 }
 
 document.querySelectorAll('[data-account-role]').forEach((button) => {
   button.addEventListener('click', () => setFormRole(button.dataset.accountRole));
 });
+
+document.getElementById('account_department_faculty').addEventListener('change', () => setSemesterOptions());
 
 document.querySelectorAll('[data-open-account-form]').forEach((button) => {
   button.addEventListener('click', () => {
@@ -422,32 +445,6 @@ accountRoleInput.addEventListener('change', () => {
   document.getElementById('account_id').value = '';
   setFormRole(accountRoleInput.value);
 });
-
-document.getElementById('account-category')?.addEventListener('change', (event) => {
-  const url = new URL(window.location.href);
-  url.searchParams.set('tab', 'accounts');
-  url.searchParams.set('category', event.target.value);
-  url.searchParams.delete('page');
-  window.location.href = url.toString();
-});
-
-const searchInput = document.getElementById('account-search');
-if (searchInput) {
-  searchInput.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter') {
-      const val = searchInput.value.trim();
-      const url = new URL(window.location.href);
-      if (val) {
-        url.searchParams.set('search', val);
-      } else {
-        url.searchParams.delete('search');
-      }
-      url.searchParams.set('tab', tab);
-      url.searchParams.set('page', '1');
-      window.location.href = url.toString();
-    }
-  });
-}
 
 accountForm.addEventListener('submit', async (event) => {
   event.preventDefault();
@@ -515,6 +512,10 @@ document.querySelectorAll('[data-account-action]').forEach((button) => {
           document.getElementById('account_id').value = json.user.role === 'student'
             ? (json.user.student_id || '')
             : (json.user.staff_id || '');
+          document.getElementById('account_department_faculty').value = json.user.department_faculty || '';
+          setSemesterOptions(json.user.semester_year || '');
+          document.getElementById('account_staff_department').value = json.user.staff_department || '';
+          document.getElementById('account_staff_role').value = json.user.staff_role || '';
           setFormRole(json.user.role || 'student');
           document.getElementById('accountModalTitle').textContent = 'Edit account';
           formErrors.style.display = 'none';
@@ -577,7 +578,6 @@ document.addEventListener('click', (event) => {
 document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') {
     document.querySelectorAll('.row-dropdown').forEach((menu) => menu.hidden = true);
-    closeModal(filterModal);
     closeModal(accountModal);
     closeModal(tempModal);
   }
